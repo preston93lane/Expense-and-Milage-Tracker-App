@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is where the app actually runs; Ubuntu also runs the browser test.
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:web
+      - name: Windows launcher prep script runs
+        if: runner.os == 'Windows'
+        run: node scripts/prepare.mjs
+      - name: Browser end-to-end test (incl. "no external requests" privacy check)
+        if: runner.os == 'Linux'
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.59.1
+          npx playwright install --with-deps chromium
+          npm run test:e2e
