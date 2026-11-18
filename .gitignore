@@ -1,0 +1,54 @@
+# Dependencies & builds
+node_modules/
+web/dist/
+dist/
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+
+# ---------------------------------------------------------------------------
+# PRIVACY: never commit real financial or location data.
+# The app keeps its data in Documents\ExpenseTracker (outside this folder),
+# but these rules are a second line of defence in case a file lands here.
+# Synthetic test fixtures live in fixtures/ and are explicitly allowed below.
+# ---------------------------------------------------------------------------
+data/
+.data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.csv
+*.CSV
+*.ofx
+*.OFX
+*.qfx
+*.QFX
+*.qbo
+*.QBO
+*.xlsx
+*.xls
+Timeline*.json
+location-history*.json
+Records.json
+Semantic Location History/
+backups/
+*.pem
+*.key
+*.crt
+*.p12
+
+# Allow made-up fixtures only
+!fixtures/**
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+.env
+.env.*

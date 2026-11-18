@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?OFX OFXHEADER="200" VERSION="211" SECURITY="NONE" OLDFILEUID="NONE" NEWFILEUID="NONE"?>
+<OFX>
+  <BANKMSGSRSV1>
+    <STMTTRNRS>
+      <TRNUID>1</TRNUID>
+      <STMTRS>
+        <CURDEF>USD</CURDEF>
+        <BANKACCTFROM>
+          <BANKID>000000000</BANKID>
+          <ACCTID>0000001234</ACCTID>
+          <ACCTTYPE>CHECKING</ACCTTYPE>
+        </BANKACCTFROM>
+        <BANKTRANLIST>
+          <DTSTART>20261001</DTSTART>
+          <DTEND>20261031</DTEND>
+          <STMTTRN>
+            <TRNTYPE>POS</TRNTYPE>
+            <DTPOSTED>20261005</DTPOSTED>
+            <DTUSER>20261004</DTUSER>
+            <TRNAMT>-5.45</TRNAMT>
+            <FITID>A1</FITID>
+            <NAME>STARBUCKS STORE 12345</NAME>
+            <MEMO>STARBUCKS STORE 12345 ANN ARBOR MI</MEMO>
+          </STMTTRN>
+          <STMTTRN>
+            <TRNTYPE>CHECK</TRNTYPE>
+            <DTPOSTED>20261012</DTPOSTED>
+            <TRNAMT>-120.00</TRNAMT>
+            <FITID>A2</FITID>
+            <CHECKNUM>1043</CHECKNUM>
+            <NAME>CHECK 1043</NAME>
+          </STMTTRN>
+          <STMTTRN>
+            <TRNTYPE>CREDIT</TRNTYPE>
+            <DTPOSTED>20261015</DTPOSTED>
+            <TRNAMT>2000.00</TRNAMT>
+            <FITID>A3</FITID>
+            <NAME>STRIPE TRANSFER</NAME>
+          </STMTTRN>
+        </BANKTRANLIST>
+      </STMTRS>
+    </STMTTRNRS>
+  </BANKMSGSRSV1>
+</OFX>
