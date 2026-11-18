@@ -57,6 +57,8 @@ export interface TxnFacts {
   state: string | null;
   city: string | null;
   date: string;
+  /** Online/phone merchant (its location is HQ, not where you were). */
+  isOnline?: boolean;
 }
 
 export interface CategorizeResult {
@@ -68,4 +70,6 @@ export interface CategorizeResult {
   confidence: number | null;
   ruleId?: number;
   note?: string;
+  /** Business trip this transaction was matched to. */
+  tripId?: number;
 }

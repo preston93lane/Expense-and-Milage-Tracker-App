@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixture } from '../../core/src/test/fixtures';
+import { LATEST_VERSION } from './db/migrations';
 import { makeTestApp, type TestApp } from './test/helpers';
 
 let t: TestApp;
@@ -41,7 +42,7 @@ describe('setup', () => {
     const rates = await t.call('GET', '/api/mileage-rates');
     expect(rates.body.map((r: any) => r.centsPerMile)).toContain(72.5);
     const meta = await t.call('GET', '/api/meta');
-    expect(meta.body.schemaVersion).toBe(1);
+    expect(meta.body.schemaVersion).toBe(LATEST_VERSION);
   });
 });
 
@@ -277,5 +278,105 @@ describe('backups', () => {
     const accts = (await t.call('GET', '/api/accounts')).body;
     expect(accts.map((a: any) => a.name)).toEqual(['Before']);
     expect((await t.call('GET', '/api/backups')).body.length).toBe(2);
+  });
+});
+
+describe('business trips', () => {
+  it('collects a trip (incl. pre-booked flight), assigns with trip-aware categories, and suggests new imports', async () => {
+    const card = await account('Card', 'credit_card');
+    // Home is Illinois; a few local purchases establish that.
+    await t.call('POST', '/api/import/commit', {
+      accountId: card,
+      fileName: 'home.csv',
+      content: [
+        'Date,Description,Amount',
+        '09/01/2026,JEWEL OSCO #123 CHICAGO IL,-80.00',
+        '09/02/2026,STARBUCKS STORE 1 CHICAGO IL,-5.00',
+        '09/05/2026,CHIPOTLE 1234 CHICAGO IL,-12.00',
+        '09/20/2026,DELTA AIR LINES ATLANTA GA,-412.30',
+        '10/12/2026,HERTZ RENT-A-CAR ROMULUS MI,-215.60',
+        '10/13/2026,TST* SLOWS BAR BQ DETROIT MI,-48.75',
+        '10/14/2026,JEWEL OSCO #123 CHICAGO IL,-60.00',
+        '10/18/2026,MARRIOTT DETROIT DOWNTOWN DETROIT MI,-689.10',
+      ].join('\n'),
+    });
+
+    const sugg = await t.call('GET', '/api/trips/suggestions');
+    expect(sugg.body.homeState).toBe('IL');
+    expect(sugg.body.suggestions[0]).toMatchObject({ state: 'MI', startDate: '2026-10-12', endDate: '2026-10-13' });
+
+    const trip = await t.call('POST', '/api/trips', {
+      name: 'Detroit kickoff', startDate: '2026-10-12', endDate: '2026-10-16', destCity: 'Detroit', destState: 'mi',
+    });
+    expect(trip.status).toBe(200);
+    expect(trip.body.destState).toBe('MI');
+
+    const detail = await t.call('GET', `/api/trips/${trip.body.id}`);
+    const picked = detail.body.candidates.filter((c: any) => c.preselect);
+    const merchants = picked.map((c: any) => c.transaction.merchant).sort();
+    expect(merchants).toEqual(['Delta Air Lines', 'Hertz', 'Marriott', 'Slows Bar Bq']);
+    const groceries = detail.body.candidates.find((c: any) => c.transaction.merchant === 'Jewel Osco');
+    expect(groceries.preselect).toBe(false);
+
+    // Creating the trip turned undecided in-window items into trip suggestions.
+    const slowsBefore = picked.find((c: any) => c.transaction.merchant === 'Slows Bar Bq').transaction;
+    expect(slowsBefore).toMatchObject({ status: 'suggested', source: 'trip', tripId: trip.body.id });
+
+    const res = await t.call('POST', `/api/trips/${trip.body.id}/assign`, {
+      items: picked.map((c: any) => ({ id: c.transaction.id, categoryId: c.suggestedCategoryId })),
+    });
+    expect(res.body.updated).toBe(4);
+
+    const after = await t.call('GET', `/api/trips/${trip.body.id}`);
+    expect(after.body.assigned).toHaveLength(4);
+    // 412.30 + 215.60 + 689.10 + 48.75 spent; meals at 50% → 24.38 (rounded) deductible
+    expect(after.body.totals.totalCents).toBe(41230 + 21560 + 68910 + 4875);
+    expect(after.body.totals.deductibleCents).toBe(41230 + 21560 + 68910 + 2438);
+    const mealsLine = after.body.totals.byCategory.find((c: any) => c.name === 'Travel meals (50%)');
+    expect(mealsLine.count).toBe(1);
+
+    // A later import of a coffee in Detroit during the trip is suggested as part of it.
+    const later = await t.call('POST', '/api/import/commit', {
+      accountId: card, fileName: 'late.csv', content: 'Date,Description,Amount\n10/15/2026,SQ *ASTRO COFFEE DETROIT MI,-9.00\n',
+    });
+    expect(later.body.suggested).toBe(1);
+    const coffee = (await t.call('GET', '/api/transactions?q=ASTRO')).body.rows[0];
+    expect(coffee).toMatchObject({ status: 'suggested', classification: 'business', tripId: trip.body.id, source: 'trip' });
+
+    // Undo the assignment.
+    await t.call('POST', `/api/actions/${res.body.actionId}/undo`);
+    expect((await t.call('GET', `/api/trips/${trip.body.id}`)).body.assigned).toHaveLength(0);
+
+    // Deleting the trip clears its suggestions.
+    await t.call('DELETE', `/api/trips/${trip.body.id}`);
+    const coffee2 = (await t.call('GET', `/api/transactions/${coffee.id}`)).body;
+    expect(coffee2.tripId).toBeNull();
+    expect(coffee2.source).not.toBe('trip');
+  });
+});
+
+describe('upgrades', () => {
+  it('backs up an existing database before migrating it', async () => {
+    const { mkdtempSync, readdirSync: ls, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const Database = (await import('better-sqlite3')).default;
+    const { migrate, openDatabase } = await import('./db/database');
+    const dir = mkdtempSync(join(tmpdir(), 'et-mig-'));
+    const dbPath = join(dir, 'data.db');
+    // Simulate a v1 database from an older version of the app.
+    const old = new Database(dbPath);
+    const { MIGRATIONS } = await import('./db/migrations');
+    old.exec(MIGRATIONS[0].sql);
+    old.pragma('user_version = 1');
+    old.prepare("INSERT INTO accounts (name, type) VALUES ('Old', 'checking')").run();
+    old.close();
+    void migrate;
+    const db = await openDatabase(dbPath, dir);
+    expect(db.pragma('user_version', { simple: true })).toBe(LATEST_VERSION);
+    expect(ls(dir).some((f) => f.startsWith('before-upgrade-v1'))).toBe(true);
+    expect((db.prepare('SELECT name FROM accounts').get() as { name: string }).name).toBe('Old');
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
   });
 });

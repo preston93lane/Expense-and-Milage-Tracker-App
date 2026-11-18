@@ -1,4 +1,5 @@
 import { categoryKeyForType, LIKELY_PERSONAL_TYPES, merchantTypeOf } from './merchantTypes';
+import { matchTrip, type TripWindow } from '../trips';
 import { firstMatchingRule } from './rules';
 import { looksLikeTransfer } from './transfers';
 import type { CategorizeResult, Classification, Rule, TxnFacts } from './types';
@@ -16,6 +17,9 @@ export interface CategorizeContext {
   history: Map<string, HistoryEntry[]>;
   /** Default-category key → database id. */
   categoryIdByKey: Record<string, number>;
+  /** Business trips: spending inside a trip window is suggested as business. */
+  trips?: TripWindow[];
+  homeState?: string | null;
 }
 
 const NONE: CategorizeResult = {
@@ -45,9 +49,10 @@ export function suggestFromHistory(entries: HistoryEntry[] | undefined): Categor
  * Decide what to do with a new transaction:
  *  1. your rules (auto-confirmed or suggested, per rule)
  *  2. transfers / card payments
- *  3. how you treated this merchant before
- *  4. built-in merchant knowledge → category hint only
- *  5. otherwise → Needs Review with no hint
+ *  3. inside a business trip (or a booking just before one) → suggested business
+ *  4. how you treated this merchant before
+ *  5. built-in merchant knowledge → category hint only
+ *  6. otherwise → Needs Review with no hint
  */
 export function categorize(t: TxnFacts & { merchantKey: string }, ctx: CategorizeContext): CategorizeResult {
   const rule = firstMatchingRule(ctx.rules, t);
@@ -71,6 +76,34 @@ export function categorize(t: TxnFacts & { merchantKey: string }, ctx: Categoriz
   }
 
   const fromHistory = suggestFromHistory(ctx.history.get(t.merchantKey.toUpperCase()));
+
+  if (ctx.trips?.length) {
+    const trip = matchTrip(
+      ctx.trips,
+      {
+        date: t.date,
+        amountCents: t.amountCents,
+        merchantKey: t.merchantKey,
+        description: t.description,
+        city: t.city,
+        state: t.state,
+        isOnline: !!t.isOnline,
+      },
+      ctx.homeState ?? null,
+    );
+    if (trip) {
+      const historyCategory = fromHistory?.classification === 'business' ? fromHistory.categoryId : null;
+      return {
+        status: 'suggested',
+        classification: 'business',
+        categoryId: (trip.categoryKey ? ctx.categoryIdByKey[trip.categoryKey] : null) ?? historyCategory ?? null,
+        source: 'trip',
+        confidence: 0.8,
+        tripId: trip.tripId,
+      };
+    }
+  }
+
   if (fromHistory) return fromHistory;
 
   const type = merchantTypeOf(t.merchantKey, t.description);

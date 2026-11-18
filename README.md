@@ -13,8 +13,8 @@ A private, local-only replacement for QuickBooks Self-Employed. It covers busine
 | 0 | Foundation: local server, database, backups, Windows launcher, CI | ✅ |
 | 1 | Bank import (CSV/OFX/QFX/QBO), transaction ledger, splits, transfers, cash entries | ✅ |
 | 2 | Auto-categorisation, rules, Needs Review with keyboard shortcuts, undo | ✅ |
-| 3 | Business trips: group a date range + location, pre-trip bookings | next |
-| 4 | Mileage: import Google Maps Timeline (iPhone), review drives, manual entry | planned |
+| 3 | Business trips: date range + location grouping, pre-trip bookings, late hotel bills, automatic trip suggestions | ✅ |
+| 4 | Mileage: import Google Maps Timeline (iPhone), review drives, manual entry | next |
 | 5 | Reports: Schedule C summary, P&L, mileage log, quarterly estimates, home office | planned |
 | 6 | iPhone/iPad: home Wi-Fi access + offline Quick Log | planned |
 | 7 | One-file Windows install, scheduled encrypted backups, year lock | planned |
@@ -48,7 +48,12 @@ It's deliberately **not** in Documents, because Windows often syncs Documents to
 1. Download last month's statement from each bank and card. Use the CSV, or the **Quicken/QuickBooks (.QFX/.QBO)** download if your bank offers it (that format has unique transaction IDs).
 2. **Import bank files:** drop them in, pick the account, check the preview, then import.
 3. **Needs Review:** press **B** for business, **P** for personal, **T** for transfer, **1–9** for a quick category, **A** to approve a suggestion, **S** to skip, **U** to undo, and **R** to tick "always do this for this merchant" (it creates a rule). "Group by merchant" plus "also apply to N other …" clears repeats in one keypress.
-4. For a work trip, go to **Transactions**, pick the date range, select all, and press **Business**. Dedicated trip grouping, which also finds flights and hotels booked earlier, is the next phase.
+4. **Business trips:** the app suggests likely trips from out-of-state card activity ("Looks like a trip to Columbus, OH, Nov 3–5"). You can also create one yourself with the dates, city/state and business purpose. It gathers:
+   - everything you spent there
+   - flights and hotels booked beforehand
+   - hotel and rental-car bills that post after you get home
+
+   It uses trip-aware categories (meals → travel meals 50%, gas → rental-car fuel), leaves spending back home and subscriptions unticked, and doesn't tick a flight that was probably for an earlier trip. Untick anything personal, add the rest, and print the trip report. Transactions imported later that fall inside a trip are suggested for it automatically.
 
 ## Privacy and security details
 

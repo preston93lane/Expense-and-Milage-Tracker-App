@@ -3,6 +3,7 @@ import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { IconArrowsSplit, IconRobot, IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, type Rule, type Transaction } from '../api';
 import { money, shortDate } from '../format';
 import { notifyError, useAccountMap, useBulkUpdate, useCategoryMap, useRefreshAll } from '../hooks';
@@ -94,6 +95,11 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
             <Group gap="xs" mt="xs">
               <ClassBadge t={t} />
               <SourceIcon source={t.source} confidence={t.confidence} />
+              {t.tripId && (
+                <Badge variant="light" color="cyan" tt="none" component={Link} to={`/trips/${t.tripId}`} style={{ cursor: 'pointer' }} onClick={onClose}>
+                  {t.status === 'reviewed' ? 'On a business trip' : 'Suggested for a business trip'} →
+                </Badge>
+              )}
               {t.transferPairId && (
                 <Badge variant="light" color="grape">
                   matched transfer

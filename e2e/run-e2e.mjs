@@ -108,6 +108,29 @@ try {
   await page.getByText('Delta is airfare').waitFor();
   check(true, 'rule created');
 
+  // Business trips: import a scenario with a home state (IL) and a Columbus, OH trip.
+  await page.getByRole('link', { name: 'Import bank files' }).click();
+  await page.getByTestId('file-input').setInputFiles(join(root, 'fixtures/bank/card-trip-scenario.csv'));
+  await page.getByRole('textbox', { name: 'Which account is this?' }).click();
+  await page.getByRole('option', { name: /Capital One Venture/ }).click();
+  await page.getByRole('button', { name: /Import 14 transactions/ }).click();
+  await page.getByText('Imported card-trip-scenario.csv').waitFor();
+  await page.getByRole('link', { name: 'Business trips' }).click();
+  await page.getByText(/Looks like a trip to .*OH/).waitFor();
+  await shot('08-trip-suggestions');
+  await page.locator('.mantine-Alert-root', { hasText: 'OH' }).getByRole('button', { name: 'Create this trip' }).click();
+  await page.getByLabel('Business purpose').fill('Workshop with client team');
+  await page.getByRole('button', { name: 'Create and find expenses' }).click();
+  await page.getByText('Possibly part of this trip').waitFor();
+  await shot('09-trip-candidates');
+  const addBtn = page.getByRole('button', { name: /Add 5 expenses to trip/ });
+  check(await addBtn.isVisible(), 'trip pre-ticks flight booked before + 4 in-Ohio expenses (not home groceries/Netflix)');
+  await addBtn.click();
+  await page.getByText(/5 expenses added to the trip/).waitFor();
+  await page.getByText('Expenses on this trip').waitFor();
+  await shot('10-trip-report');
+  check(true, 'expenses added to the trip');
+
   for (const [link, text] of [['Dashboard', 'By category'], ['Categories', 'Meals (business, 50%)'], ['Accounts', 'Capital One Venture'], ['Settings & backups', 'IRS standard mileage rates']]) {
     await page.getByRole('link', { name: link }).click();
     await page.getByText(text).first().waitFor();

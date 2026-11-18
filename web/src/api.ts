@@ -96,6 +96,7 @@ export interface Transaction {
   confidence: number | null;
   ruleId: number | null;
   transferPairId: number | null;
+  tripId: number | null;
   notes: string | null;
 }
 
@@ -213,6 +214,56 @@ export interface BulkResult {
   updated: number;
   actionId: number | null;
   relearned: number;
+}
+
+export interface Trip {
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  destCity: string | null;
+  destState: string | null;
+  beforeDays: number;
+  afterDays: number;
+  purpose: string | null;
+  createdAt: string;
+}
+
+export interface TripTotals {
+  byCategory: { categoryId: number | null; name: string; count: number; totalCents: number; deductibleCents: number }[];
+  count: number;
+  totalCents: number;
+  deductibleCents: number;
+}
+
+export interface TripListItem extends Trip {
+  totals: TripTotals;
+  suggestedCount: number;
+}
+
+export interface TripCandidate {
+  transaction: Transaction;
+  reason: 'during' | 'booked_before' | 'posted_after';
+  why: string;
+  preselect: boolean;
+  suggestedCategoryId: number | null;
+}
+
+export interface TripDetail {
+  trip: Trip;
+  homeState: string | null;
+  candidates: TripCandidate[];
+  assigned: Transaction[];
+  totals: TripTotals;
+}
+
+export interface TripSuggestion {
+  state: string;
+  cities: string[];
+  startDate: string;
+  endDate: string;
+  transactionCount: number;
+  totalCents: number;
 }
 
 export type { TaxLineInfo };

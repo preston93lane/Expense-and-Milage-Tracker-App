@@ -9,6 +9,7 @@ import {
   IconLayoutDashboard,
   IconListDetails,
   IconLock,
+  IconPlane,
   IconRobot,
   IconSettings,
 } from '@tabler/icons-react';
@@ -22,6 +23,8 @@ import { ReviewPage } from './pages/ReviewPage';
 import { RulesPage } from './pages/RulesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { TripDetailPage } from './pages/TripDetailPage';
+import { TripsPage } from './pages/TripsPage';
 
 function useReviewCount() {
   const { data } = useQuery({
@@ -49,6 +52,7 @@ export function App() {
       ) : null,
     },
     { to: '/transactions', label: 'Transactions', icon: IconListDetails },
+    { to: '/trips', label: 'Business trips', icon: IconPlane },
     { to: '/import', label: 'Import bank files', icon: IconFileImport },
     { to: '/rules', label: 'Rules', icon: IconRobot },
     { to: '/categories', label: 'Categories', icon: IconCategory },
@@ -91,7 +95,7 @@ export function App() {
             />
           ))}
           <Text size="xs" c="dimmed" px="sm" mt="lg">
-            Coming next: business trips, mileage from Google Maps Timeline, tax reports.
+            Coming next: mileage from Google Maps Timeline, then tax reports.
           </Text>
         </ScrollArea>
       </AppShell.Navbar>
@@ -100,6 +104,8 @@ export function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/trips" element={<TripsPage />} />
+          <Route path="/trips/:id" element={<TripDetailPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/categories" element={<CategoriesPage />} />

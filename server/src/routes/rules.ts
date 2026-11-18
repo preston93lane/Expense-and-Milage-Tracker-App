@@ -177,7 +177,7 @@ export function ruleRoutes(app: FastifyInstance, ctx: AppContext) {
     );
     const snaps = matches.map((t) => ({
       id: t.id, status: t.status, classification: t.classification, category_id: t.category_id, is_split: t.is_split,
-      source: t.source, confidence: t.confidence, rule_id: t.rule_id, notes: t.notes,
+      source: t.source, confidence: t.confidence, rule_id: t.rule_id, trip_id: t.trip_id, notes: t.notes,
       splits: ctx.db.prepare('SELECT * FROM splits WHERE transaction_id = ?').all(t.id),
     }));
     ctx.db.transaction(() => {

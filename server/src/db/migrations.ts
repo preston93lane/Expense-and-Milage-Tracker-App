@@ -152,6 +152,37 @@ export const MIGRATIONS: Migration[] = [
          WHERE t.is_split = 1;
     `,
   },
+  {
+    version: 2,
+    name: 'business trips',
+    sql: `
+      CREATE TABLE business_trips (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        dest_city TEXT,
+        dest_state TEXT,
+        purpose TEXT,
+        before_days INTEGER NOT NULL DEFAULT 60,
+        after_days INTEGER NOT NULL DEFAULT 5,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      ALTER TABLE transactions ADD COLUMN trip_id INTEGER REFERENCES business_trips(id) ON DELETE SET NULL;
+      CREATE INDEX ix_transactions_trip ON transactions(trip_id);
+
+      DROP VIEW ledger_lines;
+      CREATE VIEW ledger_lines AS
+        SELECT t.id AS transaction_id, NULL AS split_id, t.account_id, t.date,
+               t.amount_cents, t.classification, t.category_id, t.status, t.merchant, t.trip_id
+          FROM transactions t WHERE t.is_split = 0
+        UNION ALL
+        SELECT t.id, s.id, t.account_id, t.date,
+               s.amount_cents, s.classification, s.category_id, t.status, t.merchant, t.trip_id
+          FROM splits s JOIN transactions t ON t.id = s.transaction_id
+         WHERE t.is_split = 1;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

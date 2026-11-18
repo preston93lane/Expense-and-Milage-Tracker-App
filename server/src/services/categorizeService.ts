@@ -9,7 +9,8 @@ import {
   type Rule,
 } from '@et/core';
 import type { DB } from '../db/database';
-import { ruleFromRow, type RuleRow, type TransactionRow } from '../db/rows';
+import { inferHomeState } from '@et/core';
+import { ruleFromRow, tripToWindow, type RuleRow, type TransactionRow, type TripRow } from '../db/rows';
 
 export function loadRules(db: DB): Rule[] {
   return (db.prepare('SELECT * FROM rules WHERE enabled = 1').all() as RuleRow[]).map(ruleFromRow);
@@ -39,8 +40,26 @@ export function loadCategoryIdByKey(db: DB): Record<string, number> {
   return Object.fromEntries(rows.map((r) => [r.key, r.id]));
 }
 
+export function loadTrips(db: DB) {
+  return (db.prepare('SELECT * FROM business_trips ORDER BY start_date').all() as TripRow[]).map(tripToWindow);
+}
+
+/** Most common state among in-person card purchases ("where you live"). */
+export function loadHomeState(db: DB): string | null {
+  const rows = db
+    .prepare('SELECT state, is_online FROM transactions WHERE state IS NOT NULL AND is_online = 0 ORDER BY id DESC LIMIT 5000')
+    .all() as { state: string; is_online: number }[];
+  return inferHomeState(rows.map((r) => ({ state: r.state, isOnline: !!r.is_online })));
+}
+
 export function buildContext(db: DB): CategorizeContext {
-  return { rules: loadRules(db), history: loadHistory(db), categoryIdByKey: loadCategoryIdByKey(db) };
+  return {
+    rules: loadRules(db),
+    history: loadHistory(db),
+    categoryIdByKey: loadCategoryIdByKey(db),
+    trips: loadTrips(db),
+    homeState: loadHomeState(db),
+  };
 }
 
 export function categorizeRow(t: TransactionRow, ctx: CategorizeContext): CategorizeResult {
@@ -54,6 +73,7 @@ export function categorizeRow(t: TransactionRow, ctx: CategorizeContext): Catego
       state: t.state,
       city: t.city,
       date: t.date,
+      isOnline: !!t.is_online,
     },
     ctx,
   );
@@ -66,7 +86,7 @@ export function applyResult(db: DB, txId: number, amountCents: number, r: Catego
   db.prepare(
     `UPDATE transactions
         SET status = @status, classification = @classification, category_id = @categoryId,
-            source = @source, confidence = @confidence, rule_id = @ruleId, is_split = @isSplit,
+            source = @source, confidence = @confidence, rule_id = @ruleId, is_split = @isSplit, trip_id = @tripId,
             notes = COALESCE(notes, @note), updated_at = datetime('now')
       WHERE id = @id`,
   ).run({
@@ -79,6 +99,7 @@ export function applyResult(db: DB, txId: number, amountCents: number, r: Catego
     ruleId: r.ruleId ?? null,
     isSplit: isSplit ? 1 : 0,
     note: r.note ?? null,
+    tripId: r.tripId ?? null,
   });
   if (isSplit) {
     const [biz, pers] = splitByPercents(amountCents, [r.businessPct!, 100 - r.businessPct!]);
@@ -120,6 +141,7 @@ export function recategorize(db: DB, opts: { merchantKeys?: string[]; ids?: numb
         r.classification !== t.classification ||
         r.categoryId !== t.category_id ||
         r.source !== t.source ||
+        (r.tripId ?? null) !== t.trip_id ||
         (r.ruleId ?? null) !== t.rule_id
       ) {
         applyResult(db, t.id, t.amount_cents, r);

@@ -26,7 +26,7 @@ export function useAccountMap() {
 export function useRefreshAll() {
   const qc = useQueryClient();
   return () => {
-    for (const key of ['transactions', 'dashboard', 'review', 'accounts', 'categories', 'actions', 'batches', 'rules']) {
+    for (const key of ['transactions', 'dashboard', 'review', 'accounts', 'categories', 'actions', 'batches', 'rules', 'trips']) {
       void qc.invalidateQueries({ queryKey: [key] });
     }
   };

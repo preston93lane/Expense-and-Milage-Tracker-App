@@ -19,6 +19,7 @@ const SOURCE_TEXT: Record<string, string> = {
   transfer: 'looks like a card payment / transfer',
   rule: 'one of your rules',
   import: 'your imported history',
+  trip: 'it falls inside one of your business trips',
 };
 
 export function ReviewPage() {

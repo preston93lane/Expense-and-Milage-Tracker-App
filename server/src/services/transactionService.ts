@@ -13,6 +13,7 @@ export interface TransactionFilters {
   q?: string;
   direction?: 'in' | 'out';
   batchId?: number;
+  tripId?: number | 'none';
   ids?: number[];
   limit?: number;
   offset?: number;
@@ -37,6 +38,11 @@ function buildWhere(f: TransactionFilters): { sql: string; params: unknown[] } {
   if (f.batchId) {
     where.push('t.batch_id = ?');
     params.push(f.batchId);
+  }
+  if (f.tripId === 'none') where.push('t.trip_id IS NULL');
+  else if (f.tripId) {
+    where.push('t.trip_id = ?');
+    params.push(f.tripId);
   }
   if (f.status === 'needs_review') where.push("t.status != 'reviewed'");
   else if (f.status) {
@@ -120,6 +126,7 @@ interface Snapshot {
   source: string | null;
   confidence: number | null;
   rule_id: number | null;
+  trip_id: number | null;
   notes: string | null;
   splits: SplitRow[];
 }
@@ -141,6 +148,7 @@ function snapshot(db: DB, ids: number[]): Snapshot[] {
     source: r.source,
     confidence: r.confidence,
     rule_id: r.rule_id,
+    trip_id: r.trip_id,
     notes: r.notes,
     splits: splits.get(r.id) ?? [],
   }));
@@ -160,7 +168,7 @@ export function undoAction(db: DB, actionId: number): { restored: number } {
   const snaps = JSON.parse(row.undo_json) as Snapshot[];
   const upd = db.prepare(
     `UPDATE transactions SET status=@status, classification=@classification, category_id=@category_id, is_split=@is_split,
-            source=@source, confidence=@confidence, rule_id=@rule_id, notes=@notes, updated_at=datetime('now')
+            source=@source, confidence=@confidence, rule_id=@rule_id, trip_id=@trip_id, notes=@notes, updated_at=datetime('now')
       WHERE id=@id`,
   );
   const delSplits = db.prepare('DELETE FROM splits WHERE transaction_id = ?');
@@ -170,7 +178,7 @@ export function undoAction(db: DB, actionId: number): { restored: number } {
   let restored = 0;
   db.transaction(() => {
     for (const s of snaps) {
-      const res = upd.run({ ...s });
+      const res = upd.run({ ...s, trip_id: s.trip_id ?? null });
       if (res.changes === 0) continue; // transaction was deleted since
       delSplits.run(s.id);
       for (const sp of s.splits) insSplit.run(s.id, sp.amount_cents, sp.classification, sp.category_id, sp.note);
@@ -207,6 +215,8 @@ export interface BulkChange {
   /** Put back into Needs Review. */
   reset?: boolean;
   notes?: string | null;
+  /** Assign to a business trip (null = remove from trip). */
+  tripId?: number | null;
 }
 
 export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actionId: number | null; relearned: number } {
@@ -225,6 +235,7 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
       let confidence = s.confidence;
       let isSplit = s.is_split;
       let notes = s.notes;
+      let tripId = s.trip_id;
 
       if (change.reset) {
         status = 'unreviewed';
@@ -232,6 +243,7 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
         source = null;
         confidence = null;
         isSplit = 0;
+        tripId = null;
       }
       if (change.approve) {
         if (classification) {
@@ -240,7 +252,10 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
       }
       if (change.classification) {
         classification = change.classification;
-        if (classification !== 'business') categoryId = null;
+        if (classification !== 'business') {
+          categoryId = null;
+          tripId = null;
+        }
         status = 'reviewed';
         source = 'manual';
         confidence = null;
@@ -260,14 +275,15 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
         isSplit = 0;
       }
       if (change.notes !== undefined) notes = change.notes;
+      if (change.tripId !== undefined) tripId = change.tripId;
 
       if (isSplit === 0 && s.is_split === 1) db.prepare('DELETE FROM splits WHERE transaction_id = ?').run(s.id);
       const res = db
         .prepare(
           `UPDATE transactions SET status=?, classification=?, category_id=?, source=?, confidence=?, is_split=?, notes=?,
-                  updated_at=datetime('now') WHERE id=?`,
+                  trip_id=?, updated_at=datetime('now') WHERE id=?`,
         )
-        .run(status, classification, categoryId, source, confidence, isSplit, notes, s.id);
+        .run(status, classification, categoryId, source, confidence, isSplit, notes, tripId, s.id);
       updated += res.changes;
     }
   })();
@@ -282,6 +298,7 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
     summaryParts.push(`category → ${name}`);
   }
   if (change.notes !== undefined) summaryParts.push('edited note');
+  if (change.tripId !== undefined) summaryParts.push(change.tripId ? 'added to trip' : 'removed from trip');
   const actionId = logAction(db, `${updated} transaction${updated === 1 ? '' : 's'}: ${summaryParts.join(', ')}`, snaps);
 
   // Learn as you go: refresh suggestions for other undecided transactions from the same merchants.
@@ -295,6 +312,34 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
     relearned = recategorize(db, { merchantKeys: keys });
   }
   return { updated, actionId, relearned };
+}
+
+/**
+ * Put transactions on a business trip: business, linked to the trip, with the
+ * given (trip-aware) category. One undoable action.
+ */
+export function assignToTrip(
+  db: DB,
+  tripId: number,
+  tripName: string,
+  items: { id: number; categoryId: number | null }[],
+): { updated: number; actionId: number | null } {
+  if (items.length === 0) return { updated: 0, actionId: null };
+  const snaps = snapshot(db, items.map((i) => i.id));
+  let updated = 0;
+  db.transaction(() => {
+    const upd = db.prepare(
+      `UPDATE transactions SET status = 'reviewed', classification = 'business', category_id = ?, trip_id = ?,
+              source = 'trip', confidence = NULL, is_split = 0, updated_at = datetime('now') WHERE id = ?`,
+    );
+    const delSplits = db.prepare('DELETE FROM splits WHERE transaction_id = ?');
+    for (const it of items) {
+      delSplits.run(it.id);
+      updated += upd.run(it.categoryId, tripId, it.id).changes;
+    }
+  })();
+  const actionId = logAction(db, `${updated} transaction${updated === 1 ? '' : 's'} added to trip “${tripName}”`, snaps);
+  return { updated, actionId };
 }
 
 export interface SplitInput {

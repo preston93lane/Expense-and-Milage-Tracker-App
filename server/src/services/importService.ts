@@ -209,7 +209,7 @@ export function previewImport(db: DB, input: ImportInput) {
       (input.historyMode ? historyResult(t, categoryMap, categories) : null) ??
       categorize(
         { description: t.description, merchant: m.merchant, merchantKey: m.merchantKey, amountCents: t.amountCents,
-          accountId: accountId ?? 0, state: m.state, city: m.city, date: t.date },
+          accountId: accountId ?? 0, state: m.state, city: m.city, date: t.date, isOnline: m.online },
         ctx,
       );
     return {
@@ -351,7 +351,7 @@ export function commitImport(db: DB, paths: AppPaths, input: ImportInput) {
         (input.historyMode ? historyResult(t, categoryMap, categories) : null) ??
         categorize(
           { description: t.description, merchant: m.merchant, merchantKey: m.merchantKey, amountCents: t.amountCents,
-            accountId: account.id, state: m.state, city: m.city, date: t.date },
+            accountId: account.id, state: m.state, city: m.city, date: t.date, isOnline: m.online },
           ctx,
         );
       applyResult(db, id, t.amountCents, res);

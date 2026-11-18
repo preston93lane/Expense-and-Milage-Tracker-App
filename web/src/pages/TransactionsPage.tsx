@@ -1,4 +1,5 @@
 import {
+  Badge,
   Button,
   Checkbox,
   Group,
@@ -17,7 +18,7 @@ import {
 import { DatePickerInput, DateInput } from '@mantine/dates';
 import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { IconCalendar, IconChevronDown, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
+import { IconCalendar, IconChevronDown, IconPlane, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, qs, type Transaction, type TransactionList } from '../api';
@@ -26,6 +27,7 @@ import { CategorySelect } from '../components/CategorySelect';
 import { TransactionDrawer } from '../components/TransactionDrawer';
 import { datePresets, money, shortDate, toIso } from '../format';
 import { notifyError, useAccountMap, useAccounts, useBulkUpdate, useCategoryMap, useRefreshAll } from '../hooks';
+import { useTrips } from './TripsPage';
 
 const PAGE = 200;
 
@@ -47,6 +49,7 @@ export function TransactionsPage() {
     classification: params.get('classification') ?? '',
     categoryId: params.get('categoryId') ?? '',
     direction: params.get('direction') ?? '',
+    tripId: params.get('tripId') ?? '',
     q: debounced,
   };
   const setFilter = (k: string, v: string | null | undefined) => {
@@ -71,6 +74,8 @@ export function TransactionsPage() {
   const accountMap = useAccountMap();
   const categories = useCategoryMap();
   const bulk = useBulkUpdate();
+  const trips = useTrips();
+  const tripNames = useMemo(() => new Map((trips.data ?? []).map((t) => [t.id, t.name])), [trips.data]);
 
   const rows = data?.rows ?? [];
   const pageIds = rows.map((r) => r.id);
@@ -281,6 +286,7 @@ export function TransactionsPage() {
                   onToggle={() => toggle(t.id)}
                   onOpen={() => setOpenId(t.id)}
                   accountName={accountMap.get(t.accountId)?.name ?? ''}
+                  tripName={t.tripId ? tripNames.get(t.tripId) ?? 'Trip' : null}
                   categoryName={t.categoryId ? categories.get(t.categoryId)?.name ?? '' : ''}
                   onCategory={(id) => bulk.mutate({ ids: [t.id], categoryId: id, quiet: true })}
                 />
@@ -316,6 +322,7 @@ function Row({
   onToggle,
   onOpen,
   accountName,
+  tripName,
   categoryName,
   onCategory,
 }: {
@@ -324,6 +331,7 @@ function Row({
   onToggle: () => void;
   onOpen: () => void;
   accountName: string;
+  tripName: string | null;
   categoryName: string;
   onCategory: (id: number | null) => void;
 }) {
@@ -343,6 +351,11 @@ function Row({
         </Group>
         <Group gap={6}>
           <Location t={t} />
+          {tripName && (
+            <Badge size="xs" variant="light" color="cyan" tt="none" leftSection={<IconPlane size={10} />}>
+              {tripName}
+            </Badge>
+          )}
           {t.notes && (
             <Text size="xs" c="dimmed" lineClamp={1}>
               📝 {t.notes}

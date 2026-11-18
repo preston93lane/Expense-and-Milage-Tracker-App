@@ -29,6 +29,7 @@ function filtersFrom(q: Record<string, unknown>): TransactionFilters {
     to: optStr(q.to),
     accountId: optInt(q.accountId),
     batchId: optInt(q.batchId),
+    tripId: q.tripId === 'none' ? 'none' : optInt(q.tripId),
     status: status as TransactionFilters['status'],
     classification: classification as TransactionFilters['classification'],
     categoryId: optInt(q.categoryId),
@@ -94,6 +95,7 @@ export function transactionRoutes(app: FastifyInstance, ctx: AppContext) {
       approve: b.approve === true,
       reset: b.reset === true,
       notes: b.notes === undefined ? undefined : (optStr(b.notes) ?? null),
+      tripId: b.tripId === undefined ? undefined : b.tripId === null ? null : toInt(b.tripId, 'tripId'),
     });
   });
 
