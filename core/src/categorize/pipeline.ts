@@ -20,6 +20,8 @@ export interface CategorizeContext {
   /** Business trips: spending inside a trip window is suggested as business. */
   trips?: TripWindow[];
   homeState?: string | null;
+  /** Per-transaction rule exceptions (only used by the server; kept here for typing). */
+  exceptions?: Map<number, Set<number>>;
 }
 
 const NONE: CategorizeResult = {

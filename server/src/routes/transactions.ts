@@ -124,6 +124,23 @@ export function transactionRoutes(app: FastifyInstance, ctx: AppContext) {
   /** Re-run auto-categorisation on everything still undecided. */
   app.post('/api/transactions/recategorize', async () => ({ changed: recategorize(ctx.db) }));
 
+  /** Skip one rule for one transaction. The transaction goes back to being decided by everything else. */
+  app.post('/api/transactions/:id/ignore-rule', async (req) => {
+    const id = toInt((req.params as { id: string }).id, 'id');
+    const ruleId = toInt(((req.body ?? {}) as Record<string, unknown>).ruleId, 'ruleId');
+    const t = ctx.db.prepare('SELECT id FROM transactions WHERE id = ?').get(id);
+    if (!t) badRequest('Transaction not found');
+    ctx.db.transaction(() => {
+      ctx.db.prepare('INSERT OR IGNORE INTO rule_exceptions (rule_id, transaction_id) VALUES (?, ?)').run(ruleId, id);
+      ctx.db
+        .prepare("UPDATE transactions SET status='unreviewed', classification=NULL, category_id=NULL, source=NULL, confidence=NULL, rule_id=NULL, is_split=0 WHERE id=?")
+        .run(id);
+      ctx.db.prepare('DELETE FROM splits WHERE transaction_id = ?').run(id);
+      recategorize(ctx.db, { ids: [id] });
+    })();
+    return getTransaction(ctx.db, id);
+  });
+
   app.get('/api/actions', async (req) => listActions(ctx.db, optInt((req.query as Record<string, unknown>).limit) ?? 20));
 
   app.post('/api/actions/:id/undo', async (req) => {

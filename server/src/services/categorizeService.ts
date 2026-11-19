@@ -52,8 +52,21 @@ export function loadHomeState(db: DB): string | null {
   return inferHomeState(rows.map((r) => ({ state: r.state, isOnline: !!r.is_online })));
 }
 
+/** transaction id → rule ids that should be ignored for it. */
+export function loadExceptions(db: DB): Map<number, Set<number>> {
+  const rows = db.prepare('SELECT rule_id, transaction_id FROM rule_exceptions').all() as { rule_id: number; transaction_id: number }[];
+  const map = new Map<number, Set<number>>();
+  for (const r of rows) {
+    const set = map.get(r.transaction_id) ?? new Set<number>();
+    set.add(r.rule_id);
+    map.set(r.transaction_id, set);
+  }
+  return map;
+}
+
 export function buildContext(db: DB): CategorizeContext {
   return {
+    exceptions: loadExceptions(db),
     rules: loadRules(db),
     history: loadHistory(db),
     categoryIdByKey: loadCategoryIdByKey(db),
@@ -62,7 +75,9 @@ export function buildContext(db: DB): CategorizeContext {
   };
 }
 
-export function categorizeRow(t: TransactionRow, ctx: CategorizeContext): CategorizeResult {
+export function categorizeRow(t: TransactionRow, fullCtx: CategorizeContext): CategorizeResult {
+  const skipped = fullCtx.exceptions?.get(t.id);
+  const ctx = skipped ? { ...fullCtx, rules: fullCtx.rules.filter((r) => !skipped.has(r.id)) } : fullCtx;
   return categorize(
     {
       description: t.description,

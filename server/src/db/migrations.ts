@@ -183,6 +183,17 @@ export const MIGRATIONS: Migration[] = [
          WHERE t.is_split = 1;
     `,
   },
+  {
+    version: 3,
+    name: 'rule exceptions: ignore a rule for one transaction',
+    sql: `
+      CREATE TABLE rule_exceptions (
+        rule_id INTEGER NOT NULL REFERENCES rules(id) ON DELETE CASCADE,
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        PRIMARY KEY (rule_id, transaction_id)
+      );
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

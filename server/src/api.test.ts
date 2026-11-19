@@ -380,3 +380,33 @@ describe('upgrades', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe('rules: ignore for one transaction, or delete', () => {
+  it('ignores a rule for one transaction only, and deleting a rule keeps reviewed results', async () => {
+    const card = await account('Card', 'credit_card');
+    await importFile(card, 'card-capitalone-style.csv');
+    const software = await categoryId('software');
+    const adobe = (await t.call('GET', '/api/transactions?q=ADOBE')).body.rows[0];
+    await t.call('POST', '/api/transactions/bulk', { ids: [adobe.id], categoryId: software });
+    const created = await t.call('POST', '/api/rules/from-transaction', { transactionId: adobe.id });
+    const ruleId = created.body.rule.id;
+    const second = await account('Amex', 'credit_card');
+    await t.call('POST', '/api/import/commit', {
+      accountId: second, fileName: 'n.csv', content: 'Date,Description,Amount\n11/22/2026,ADOBE *ACROPRO 408-536-6000 CA,19.99\n11/23/2026,ADOBE *STOCK 408-536-6000 CA,9.99\n',
+    });
+    const rows = (await t.call('GET', `/api/transactions?accountId=${second}`)).body.rows;
+    expect(rows.every((r: any) => r.ruleId === ruleId)).toBe(true);
+
+    // Ignore the rule for the first one only.
+    const ignored = await t.call('POST', `/api/transactions/${rows[0].id}/ignore-rule`, { ruleId });
+    expect(ignored.body.ruleId).toBeNull();
+    expect(ignored.body.status).not.toBe('reviewed');
+    const still = (await t.call('GET', `/api/transactions/${rows[1].id}`)).body;
+    expect(still).toMatchObject({ status: 'reviewed', ruleId, categoryId: software });
+
+    // Deleting the rule keeps what was already reviewed, and removes the link.
+    await t.call('DELETE', `/api/rules/${ruleId}`);
+    const after = (await t.call('GET', `/api/transactions/${rows[1].id}`)).body;
+    expect(after).toMatchObject({ status: 'reviewed', categoryId: software, ruleId: null });
+  });
+});

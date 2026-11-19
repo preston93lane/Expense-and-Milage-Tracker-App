@@ -5,6 +5,7 @@ import { IconArrowsSplit, IconRobot, IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type Rule, type Transaction } from '../api';
+import { Anchor } from '@mantine/core';
 import { money, shortDate } from '../format';
 import { notifyError, useAccountMap, useBulkUpdate, useCategoryMap, useRefreshAll } from '../hooks';
 import { ClassBadge, Location, Money, SourceIcon } from './bits';
@@ -39,6 +40,24 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
   const bulk = useBulkUpdate();
   const refresh = useRefreshAll();
   const createRule = useCreateRuleFromTransaction();
+  const rulesQ = useQuery({ queryKey: ['rules'], queryFn: () => api.get<Rule[]>('/api/rules'), enabled: id !== null });
+  const ruleName = t?.ruleId ? rulesQ.data?.find((r) => r.id === t.ruleId)?.name ?? 'a rule' : null;
+  const deleteRule = useMutation({
+    mutationFn: (ruleId: number) => api.del(`/api/rules/${ruleId}`),
+    onSuccess: () => {
+      refresh();
+      notifications.show({ color: 'gray', message: 'Rule deleted. Transactions it already sorted keep their categories.' });
+    },
+    onError: notifyError,
+  });
+  const ignoreRule = useMutation({
+    mutationFn: (ruleId: number) => api.post<Transaction>(`/api/transactions/${id}/ignore-rule`, { ruleId }),
+    onSuccess: () => {
+      refresh();
+      notifications.show({ color: 'gray', message: 'Rule skipped for this transaction. It is back to Needs Review or a suggestion.' });
+    },
+    onError: notifyError,
+  });
   const [notes, setNotes] = useState('');
   const [splitting, setSplitting] = useState(false);
 
@@ -98,6 +117,11 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
               {t.tripId && (
                 <Badge variant="light" color="cyan" tt="none" component={Link} to={`/trips/${t.tripId}`} style={{ cursor: 'pointer' }} onClick={onClose}>
                   {t.status === 'reviewed' ? 'On a business trip' : 'Suggested for a business trip'} →
+                </Badge>
+              )}
+              {ruleName && t.ruleId && (
+                <Badge variant="light" color="grape" tt="none">
+                  Set by rule: {ruleName}
                 </Badge>
               )}
               {t.transferPairId && (
@@ -214,6 +238,47 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
           <Text size="xs" c="dimmed">
             Amount {money(t.amountCents)} · {t.amountCents < 0 ? 'money out' : 'money in'}
           </Text>
+
+          {t.ruleId && (
+            <Alert color="grape" variant="light" title="This transaction was sorted by a rule">
+              <Stack gap="xs">
+                <Text size="sm">Rule: {ruleName}</Text>
+                <Group gap="xs">
+                  <Anchor component={Link} to="/rules" size="sm" onClick={onClose}>
+                    Open rules to edit
+                  </Anchor>
+                </Group>
+                <Group gap="xs">
+                  <Button size="xs" variant="default" loading={ignoreRule.isPending} onClick={() => ignoreRule.mutate(t.ruleId!)}>
+                    Ignore rule for this transaction
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="red"
+                    variant="subtle"
+                    loading={deleteRule.isPending}
+                    onClick={() => {
+                      if (window.confirm(`Delete the rule “${ruleName}”? Transactions it already sorted keep their categories.`)) deleteRule.mutate(t.ruleId!);
+                    }}
+                  >
+                    Delete rule
+                  </Button>
+                </Group>
+              </Stack>
+            </Alert>
+          )}
+
+          <Button
+            size="md"
+            fullWidth
+            mt="sm"
+            onClick={() => {
+              if ((t.notes ?? '') !== notes) bulk.mutate({ ids: [t.id], notes, quiet: true });
+              onClose();
+            }}
+          >
+            Save and close
+          </Button>
         </Stack>
       )}
     </Drawer>
