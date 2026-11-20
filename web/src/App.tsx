@@ -3,6 +3,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import {
   IconBuildingBank,
+  IconReceipt,
   IconPigMoney,
   IconReceiptTax,
   IconChartLine,
@@ -41,6 +42,7 @@ import { ImportPage } from './pages/ImportPage';
 import { IncomePage } from './pages/IncomePage';
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
 import { InvoicesPage } from './pages/InvoicesPage';
+import { ReceiptsPage } from './pages/ReceiptsPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { RulesPage } from './pages/RulesPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -100,6 +102,7 @@ export function App() {
       items: [
         { to: '/trips', label: 'Business trips', icon: IconPlane },
         { to: '/contractors', label: 'Contractors & 1099s', icon: IconUserDollar },
+        { to: '/receipts', label: 'Receipts', icon: IconReceipt },
       ],
     },
     {
@@ -182,6 +185,7 @@ export function App() {
           <Route path="/trips" element={<TripsPage />} />
           <Route path="/trips/:id" element={<TripDetailPage />} />
           <Route path="/contractors" element={<ContractorsPage />} />
+          <Route path="/receipts" element={<ReceiptsPage />} />
           <Route path="/cashflow" element={<CashFlowPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />
           <Route path="/subscriptions" element={<SubscriptionsPage />} />

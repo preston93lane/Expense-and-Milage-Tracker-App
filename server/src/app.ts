@@ -14,6 +14,7 @@ import { tripRoutes } from './routes/trips';
 import { incomeRoutes } from './routes/income';
 import { planningRoutes } from './routes/planning';
 import { taxRoutes } from './routes/taxes';
+import { receiptRoutes } from './routes/receipts';
 
 /**
  * Content Security Policy: the page may only talk to this local server.
@@ -107,6 +108,7 @@ export async function buildApp(ctx: AppContext, opts: BuildOptions = {}): Promis
   incomeRoutes(app, ctx);
   planningRoutes(app, ctx);
   taxRoutes(app, ctx);
+  receiptRoutes(app, ctx);
 
   const webDist = opts.webDist ?? WEB_DIST;
   if (existsSync(join(webDist, 'index.html'))) {

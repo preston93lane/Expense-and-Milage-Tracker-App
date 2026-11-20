@@ -12,6 +12,7 @@ import { ClassBadge, Location, Money, SourceIcon } from './bits';
 import { CategorySelect } from './CategorySelect';
 import { SplitEditor, type SplitLineInput } from './SplitEditor';
 import { ClientSelect, ContractorSelect, ProjectSelect } from './PartySelects';
+import { TransactionReceipts } from './ReceiptsSection';
 
 export function useCreateRuleFromTransaction() {
   const refresh = useRefreshAll();
@@ -211,6 +212,16 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
               )}
             </>
           )}
+
+          <Divider label="Receipt" labelPosition="left" />
+          <TransactionReceipts
+            t={t}
+            needsReceipt={
+              t.classification === 'business' &&
+              t.amountCents < 0 &&
+              (t.amountCents <= -7500 || (t.categoryId !== null && categories.get(t.categoryId)?.key === 'travel_lodging'))
+            }
+          />
 
           <Divider label="Split" labelPosition="left" />
           {t.isSplit && !splitting && (

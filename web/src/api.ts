@@ -101,6 +101,7 @@ export interface Transaction {
   projectId: number | null;
   contractorId: number | null;
   paymentMethod: 'direct' | 'card_or_processor' | null;
+  receiptCount?: number;
   notes: string | null;
 }
 
@@ -507,6 +508,45 @@ export interface BudgetsResponse {
   unreviewed: number;
   businessTotalCents: number;
   personalTotalCents: number;
+}
+
+export interface Receipt {
+  id: number;
+  fileName: string;
+  mime: string | null;
+  sizeBytes: number | null;
+  source: 'upload' | 'email' | 'folder';
+  emailFrom: string | null;
+  emailSubject: string | null;
+  merchant: string | null;
+  receiptDate: string | null;
+  totalCents: number | null;
+  transactionId: number | null;
+  matchStatus: 'unmatched' | 'suggested' | 'matched' | 'ignored';
+  matchScore: number | null;
+  hasText: boolean;
+  createdAt: string;
+  transaction?: Transaction | null;
+}
+
+export interface ReceiptDetail extends Receipt {
+  text: string | null;
+  candidates: { transactionId: number; score: number; reasons: string[]; transaction?: Transaction }[];
+}
+
+/** Read browser File objects as base64 for upload. */
+export async function filesToPayload(files: File[]): Promise<{ fileName: string; contentBase64: string }[]> {
+  return Promise.all(
+    files.map(
+      (f) =>
+        new Promise<{ fileName: string; contentBase64: string }>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve({ fileName: f.name, contentBase64: String(r.result).split(',')[1] ?? '' });
+          r.onerror = () => reject(r.error);
+          r.readAsDataURL(f);
+        }),
+    ),
+  );
 }
 
 export type { TaxLineInfo };

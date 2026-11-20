@@ -389,6 +389,36 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX ix_retirement_contrib_tx ON retirement_contributions(transaction_id);
     `,
   },
+  {
+    version: 7,
+    name: 'receipts',
+    sql: `
+      CREATE TABLE receipts (
+        id INTEGER PRIMARY KEY,
+        file_name TEXT NOT NULL,
+        stored_path TEXT NOT NULL,
+        mime TEXT,
+        size_bytes INTEGER,
+        sha256 TEXT UNIQUE,
+        source TEXT NOT NULL CHECK (source IN ('upload','email','folder')),
+        email_from TEXT,
+        email_subject TEXT,
+        email_date TEXT,
+        email_message_id TEXT,
+        merchant TEXT,
+        merchant_key TEXT,
+        receipt_date TEXT,
+        total_cents INTEGER,
+        text TEXT,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        match_status TEXT NOT NULL DEFAULT 'unmatched' CHECK (match_status IN ('unmatched','suggested','matched','ignored')),
+        match_score INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX ix_receipts_tx ON receipts(transaction_id);
+      CREATE INDEX ix_receipts_msg ON receipts(email_message_id);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

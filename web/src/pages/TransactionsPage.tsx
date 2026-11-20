@@ -18,7 +18,7 @@ import {
 import { DatePickerInput, DateInput } from '@mantine/dates';
 import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { IconCalendar, IconChevronDown, IconPlane, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
+import { IconCalendar, IconChevronDown, IconPaperclip, IconPlane, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, qs, type Transaction, type TransactionList } from '../api';
@@ -354,6 +354,7 @@ function Row({
             {t.merchant}
           </Text>
           <SourceIcon source={t.source} confidence={t.confidence} />
+          {t.receiptCount ? <IconPaperclip size={14} color="var(--mantine-color-dimmed)" aria-label="Has a receipt" /> : null}
         </Group>
         <Group gap={6}>
           <Location t={t} />

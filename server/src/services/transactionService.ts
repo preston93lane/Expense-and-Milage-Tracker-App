@@ -100,7 +100,10 @@ export function listTransactions(db: DB, f: TransactionFilters) {
   const limit = Math.min(Math.max(f.limit ?? 500, 1), 5000);
   const offset = Math.max(f.offset ?? 0, 0);
   const rows = db
-    .prepare(`SELECT t.* FROM transactions t ${sql} ORDER BY ${SORTS[f.sort ?? 'date_desc']} LIMIT ? OFFSET ?`)
+    .prepare(
+      `SELECT t.*, (SELECT COUNT(*) FROM receipts r WHERE r.transaction_id = t.id AND r.match_status = 'matched') AS receipt_count
+         FROM transactions t ${sql} ORDER BY ${SORTS[f.sort ?? 'date_desc']} LIMIT ? OFFSET ?`,
+    )
     .all(...params, limit, offset) as TransactionRow[];
   const agg = db
     .prepare(

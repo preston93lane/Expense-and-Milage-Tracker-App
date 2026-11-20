@@ -1,0 +1,20 @@
+From: "Delta Air Lines" <DeltaAirLines@t.delta.com>
+To: traveler@example.com
+Subject: Your Flight Receipt - EXAMPLE TRAVELER 20SEP26
+Date: Sun, 20 Sep 2026 14:02:11 -0400
+Message-ID: <fake-delta-123@example.delta.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset="utf-8"
+
+<html><body>
+<h1>Thank you for choosing Delta.</h1>
+<table>
+<tr><td>Issue Date:</td><td>09/20/2026</td></tr>
+<tr><td>Confirmation #:</td><td>ABC123</td></tr>
+<tr><td>Flight</td><td>DL 1234 Chicago (ORD) to Detroit (DTW)</td></tr>
+<tr><td>Base Fare</td><td>$355.35</td></tr>
+<tr><td>Taxes, Fees &amp; Charges</td><td>$56.95</td></tr>
+<tr><td><b>Total Charged:</b></td><td><b>$412.30 USD</b></td></tr>
+</table>
+<p>Charged to Visa ending in 9876</p>
+</body></html>

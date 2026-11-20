@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { badRequest, toInt, type AppContext } from '../context';
 import { commitImport, previewImport, undoImport, type ImportInput } from '../services/importService';
+import { rematchReceipts } from './receipts';
 
 function readInput(body: unknown): ImportInput {
   const b = (body ?? {}) as Record<string, unknown>;
@@ -30,7 +31,9 @@ export function importRoutes(app: FastifyInstance, ctx: AppContext) {
 
   app.post('/api/import/commit', async (req) => {
     try {
-      return commitImport(ctx.db, ctx.paths, readInput(req.body));
+      const result = commitImport(ctx.db, ctx.paths, readInput(req.body));
+      // New bank rows may be what waiting receipts belong to.
+      return { ...result, receiptsMatched: rematchReceipts(ctx) };
     } catch (e) {
       badRequest((e as Error).message);
     }

@@ -171,6 +171,7 @@ export function transactionToApi(t: TransactionRow, splits: SplitRow[] = []) {
     projectId: t.project_id,
     contractorId: t.contractor_id,
     paymentMethod: t.payment_method,
+    receiptCount: (t as TransactionRow & { receipt_count?: number }).receipt_count ?? 0,
     notes: t.notes,
   };
 }

@@ -217,6 +217,14 @@ try {
   await shot('18-retirement');
   check(true, 'retirement account + projection chart');
 
+  // Receipts: an airline email receipt + a rental car text receipt match their card charges.
+  await page.getByRole('link', { name: 'Receipts', exact: true }).click();
+  await page.getByTestId('receipt-input').setInputFiles([join(root, 'fixtures/receipts/delta-receipt.eml'), join(root, 'fixtures/receipts/hertz-receipt.txt')]);
+  await page.getByText(/2 receipts added · 2 matched automatically/).waitFor();
+  await page.getByText('Matched', { exact: true }).first().click();
+  await shot('19-receipts');
+  check(true, 'receipts matched to card transactions');
+
   for (const [link, text] of [['Dashboard', 'By category'], ['Categories', 'Meals (business, 50%)'], ['Accounts', 'Capital One Venture'], ['Settings & backups', 'IRS standard mileage rates']]) {
     await page.getByRole('link', { name: link }).click();
     await page.getByText(text).first().waitFor();

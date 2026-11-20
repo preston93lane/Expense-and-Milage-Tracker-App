@@ -1,0 +1,8 @@
+HERTZ RENTAL RECORD
+Rental agreement 0000000
+Pickup: DTW Airport, Romulus MI   Oct 12, 2026
+Return: DTW Airport               Oct 16, 2026
+Time & mileage            $180.00
+Taxes and fees             $35.60
+Subtotal                  $215.60
+TOTAL CHARGES             $215.60
