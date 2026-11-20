@@ -13,6 +13,7 @@ import type { FastifyInstance } from 'fastify';
 import { badRequest, notFound, optInt, optStr, toInt, type AppContext } from '../context';
 import { getSetting, setSetting } from '../db/database';
 import { taxSummary, yearRange } from '../services/taxService';
+import { loadAssets } from '../services/assetService';
 
 type Row = Record<string, any>;
 const ACCOUNT_TYPES: RetirementAccountType[] = ['sep_ira', 'solo_401k', 'traditional_ira', 'roth_ira', '401k', 'hsa', 'brokerage', 'other'];
@@ -367,6 +368,20 @@ export function taxRoutes(app: FastifyInstance, ctx: AppContext) {
     for (const q of s.quarters) est.addRow([`Q${q.quarter} due ${q.due}`, money(q.amountCents), `paid ${(q.paidCents / 100).toFixed(2)} — ${q.status}`]);
     for (const p of s.payments) est.addRow([`Payment ${p.date}`, money(p.amountCents)]);
     est.getColumn(2).numFmt = fmt;
+
+    // Form 4562 worksheet: what the equipment register writes off this year.
+    const assets = loadAssets(db, year, `${year}-12-31`).filter((a) => a.placedInService <= to);
+    if (assets.length) {
+      const eq = sheet('Equipment (Form 4562)', [['Item', 30], ['Type', 12], ['In service', 12], ['Cost', 14], ['Business %', 11], ['Method', 16], [`${year} write-off`, 16], ['Left to write off', 16], ['Serial #', 18], ['Sold', 12], ['Notes', 60]]);
+      const METHOD: Record<string, string> = { de_minimis: 'De minimis', section179: 'Section 179', bonus: '100% bonus', macrs5: '5-yr MACRS', macrs7: '7-yr MACRS', straight_line: 'Straight-line' };
+      for (const a of assets) {
+        eq.addRow([a.name, a.type, a.placedInService, money(a.costCents), a.businessUsePct / 100, METHOD[a.method], money(a.deductionThisYearCents), money(a.remainingAfterYearCents), a.serialNumber ?? '', a.disposedDate ?? '', a.warnings.join(' ')]);
+      }
+      eq.addRow([]);
+      eq.addRow(['Total (Schedule C line 13)', '', '', null, null, '', money(sc1.depreciationCents)]);
+      for (const c of [4, 7, 8]) eq.getColumn(c).numFmt = fmt;
+      eq.getColumn(5).numFmt = '0%';
+    }
 
     const subs = sheet('Notes', [['Note', 120]]);
     subs.addRow(['Prepared by the Expense & Mileage Tracker from reviewed transactions. Bookkeeping summary — confirm with your tax preparer.']);

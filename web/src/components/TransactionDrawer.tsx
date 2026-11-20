@@ -223,6 +223,10 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
             }
           />
 
+          {t.amountCents < 0 && t.classification !== 'personal' && t.classification !== 'transfer' && (
+            <EquipmentLink t={t} suggest={(t.categoryId !== null && categories.get(t.categoryId)?.key === 'equipment') || t.amountCents <= -50000} />
+          )}
+
           <Divider label="Split" labelPosition="left" />
           {t.isSplit && !splitting && (
             <Stack gap="xs">
@@ -335,5 +339,35 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
         </Stack>
       )}
     </Drawer>
+  );
+}
+
+/** Gear bought in this transaction: link to the equipment register, or offer to add it. */
+function EquipmentLink({ t, suggest }: { t: Transaction; suggest: boolean }) {
+  const { data } = useQuery({
+    queryKey: ['assets', 'tx', t.id],
+    queryFn: () => api.get<{ assets: { id: number; name: string; costCents: number }[] }>(`/api/assets/by-transaction/${t.id}`),
+  });
+  const list = data?.assets ?? [];
+  if (!list.length && !suggest) return null;
+  return (
+    <>
+      <Divider label="Equipment" labelPosition="left" />
+      <Stack gap={4}>
+        {list.map((a) => (
+          <Text key={a.id} size="sm">
+            In the equipment register: <Anchor component={Link} to="/equipment">{a.name}</Anchor> ({money(a.costCents)})
+          </Text>
+        ))}
+        {list.length === 0 && (
+          <Text size="xs" c="dimmed">
+            Bought gear, a computer or furniture? Add it to the register to track the write-off, warranty and replacement date.
+          </Text>
+        )}
+        <Button size="xs" variant="default" w="fit-content" component={Link} to={`/equipment?fromTransaction=${t.id}`}>
+          {list.length ? 'Add another item from this purchase' : 'Add to equipment register'}
+        </Button>
+      </Stack>
+    </>
   );
 }

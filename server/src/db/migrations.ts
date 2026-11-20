@@ -419,6 +419,34 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX ix_receipts_msg ON receipts(email_message_id);
     `,
   },
+  {
+    version: 8,
+    name: 'equipment register',
+    sql: `
+      CREATE TABLE assets (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'other'
+          CHECK (type IN ('camera','lens','audio','lighting','drone','computer','phone_tablet','software','furniture','vehicle','other')),
+        purchase_date TEXT NOT NULL,
+        placed_in_service TEXT NOT NULL,
+        cost_cents INTEGER NOT NULL CHECK (cost_cents >= 0),
+        business_use_pct REAL NOT NULL DEFAULT 100 CHECK (business_use_pct BETWEEN 0 AND 100),
+        method TEXT NOT NULL CHECK (method IN ('de_minimis','section179','bonus','macrs5','macrs7','straight_line')),
+        life_years INTEGER,
+        vendor TEXT,
+        serial_number TEXT,
+        warranty_until TEXT,
+        replace_after_years REAL,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        disposed_date TEXT,
+        disposed_amount_cents INTEGER,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX ix_assets_tx ON assets(transaction_id);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

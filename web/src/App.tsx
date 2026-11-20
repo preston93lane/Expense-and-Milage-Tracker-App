@@ -10,6 +10,7 @@ import {
   IconRepeat,
   IconTargetArrow,
   IconCash,
+  IconCamera,
   IconCategory,
   IconFileImport,
   IconFileInvoice,
@@ -38,6 +39,7 @@ import { ClientDetailPage } from './pages/ClientDetailPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { ContractorsPage } from './pages/ContractorsPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { EquipmentPage } from './pages/EquipmentPage';
 import { ImportPage } from './pages/ImportPage';
 import { IncomePage } from './pages/IncomePage';
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
@@ -103,6 +105,7 @@ export function App() {
         { to: '/trips', label: 'Business trips', icon: IconPlane },
         { to: '/contractors', label: 'Contractors & 1099s', icon: IconUserDollar },
         { to: '/receipts', label: 'Receipts', icon: IconReceipt },
+        { to: '/equipment', label: 'Equipment', icon: IconCamera },
       ],
     },
     {
@@ -186,6 +189,7 @@ export function App() {
           <Route path="/trips/:id" element={<TripDetailPage />} />
           <Route path="/contractors" element={<ContractorsPage />} />
           <Route path="/receipts" element={<ReceiptsPage />} />
+          <Route path="/equipment" element={<EquipmentPage />} />
           <Route path="/cashflow" element={<CashFlowPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />
           <Route path="/subscriptions" element={<SubscriptionsPage />} />

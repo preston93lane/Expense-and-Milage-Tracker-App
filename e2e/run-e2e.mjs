@@ -225,6 +225,26 @@ try {
   await shot('19-receipts');
   check(true, 'receipts matched to card transactions');
 
+  // Equipment register: a $3,299 camera written off over 5 years, and a desk under $2,500.
+  await page.getByRole('link', { name: 'Equipment', exact: true }).click();
+  const yr = new Date().getFullYear();
+  for (const [name, cost, method] of [['Sony A7 IV', '3299', '5-year MACRS'], ['Standing desk', '640', null]]) {
+    await page.getByRole('button', { name: 'Add equipment' }).click();
+    await page.getByLabel('What is it?').fill(name);
+    await page.getByRole('textbox', { name: /^Cost/ }).fill(cost);
+    await page.getByLabel('Bought on').fill(`${yr}-01-15`);
+    if (method) {
+      await page.getByRole('textbox', { name: 'How to write it off' }).click();
+      await page.getByRole('option', { name: method }).click();
+      await page.getByText(`${yr}: $659.80`).waitFor();
+      await shot('20a-equipment-form');
+    }
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByRole('cell', { name: new RegExp(name) }).first().waitFor();
+  }
+  check(await page.getByText('$1,299.80').first().isVisible(), 'equipment write-off for the year (MACRS + de minimis)');
+  await shot('20-equipment');
+
   for (const [link, text] of [['Dashboard', 'By category'], ['Categories', 'Meals (business, 50%)'], ['Accounts', 'Capital One Venture'], ['Settings & backups', 'IRS standard mileage rates']]) {
     await page.getByRole('link', { name: link }).click();
     await page.getByText(text).first().waitFor();

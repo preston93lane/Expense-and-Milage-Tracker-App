@@ -10,6 +10,7 @@ import {
   type TaxProfile,
 } from '@et/core';
 import { getSetting, type DB } from '../db/database';
+import { assetDepreciationForYear, linkedAssetAdjustments } from './assetService';
 
 type Row = Record<string, any>;
 
@@ -17,8 +18,13 @@ export function yearRange(year: number) {
   return { from: `${year}-01-01`, to: `${year}-12-31` };
 }
 
-/** Reviewed business lines for a period, totalled per category. */
+/**
+ * Reviewed business lines for a period, totalled per category. Purchases that
+ * are in the equipment register are taken out here — they're written off
+ * through depreciation (line 13) instead.
+ */
 export function categoryTotals(db: DB, from: string, to: string): CategoryTotal[] {
+  const adj = tableExists(db, 'assets') ? linkedAssetAdjustments(db, from, to) : new Map<number, number>();
   return (
     db
       .prepare(
@@ -28,14 +34,16 @@ export function categoryTotals(db: DB, from: string, to: string): CategoryTotal[
           GROUP BY c.id`,
       )
       .all(from, to) as Row[]
-  ).map((r) => ({
-    categoryId: r.id,
-    name: r.name,
-    taxLine: r.tax_line,
-    kind: r.kind,
-    deductiblePct: r.deductible_pct,
-    totalCents: r.total,
-  }));
+  )
+    .map((r) => ({
+      categoryId: r.id,
+      name: r.name,
+      taxLine: r.tax_line,
+      kind: r.kind,
+      deductiblePct: r.deductible_pct,
+      totalCents: r.total + (adj.get(r.id) ?? 0),
+    }))
+    .filter((c) => c.totalCents !== 0 || !adj.has(c.categoryId));
 }
 
 function tableExists(db: DB, name: string): boolean {
@@ -60,9 +68,9 @@ export function mileageDeductionCents(db: DB, from: string, to: string): { cents
   return { cents, miles: Math.round(miles * 10) / 10 };
 }
 
-/** Depreciation for the year from the equipment register (Task 4 fills this in). */
-export function depreciationCents(_db: DB, _year: number): number {
-  return 0;
+/** Depreciation / Section 179 for the year from the equipment register (Form 4562 → line 13). */
+export function depreciationCents(db: DB, year: number): number {
+  return tableExists(db, 'assets') ? assetDepreciationForYear(db, year).totalCents : 0;
 }
 
 export function homeOfficeFor(db: DB, year: number): HomeOfficeInput | null {
@@ -75,14 +83,15 @@ export function scheduleCFor(db: DB, year: number, to?: string) {
   const range = yearRange(year);
   const end = to && to < range.to ? to : range.to;
   const mileage = mileageDeductionCents(db, range.from, end);
+  const depreciation = depreciationCents(db, year);
   const sc = buildScheduleC({
     categories: categoryTotals(db, range.from, end),
     mileageMethod: getSetting(db, 'mileage_method', 'standard') as 'standard' | 'actual',
     mileageDeductionCents: mileage.cents,
-    depreciationCents: depreciationCents(db, year),
+    depreciationCents: depreciation,
     homeOffice: homeOfficeFor(db, year),
   });
-  return { ...sc, businessMiles: mileage.miles };
+  return { ...sc, businessMiles: mileage.miles, depreciationCents: depreciation };
 }
 
 export function taxProfileFor(db: DB, year: number) {
@@ -136,7 +145,9 @@ export function taxSummary(db: DB, year: number, today = todayIso()) {
       projected = ytdProfit;
       projectionNote = 'Using profit so far only (assumes no more income this year).';
     } else {
-      projected = fraction > 0.04 ? Math.round(ytdProfit / fraction) : ytdProfit;
+      // Equipment write-offs are already full-year amounts, so don't scale them up.
+      const dep = ytd.depreciationCents;
+      projected = fraction > 0.04 ? Math.round((ytdProfit + dep) / fraction) - dep : ytdProfit;
       projectionNote = `On pace: profit so far × ${(1 / Math.max(fraction, 0.0001)).toFixed(2)} (${Math.round(fraction * 100)}% of the year has passed).`;
     }
   }
