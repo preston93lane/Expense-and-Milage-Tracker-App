@@ -28,7 +28,7 @@ export function useRefreshAll() {
   return () => {
     for (const key of [
       'transactions', 'dashboard', 'review', 'accounts', 'categories', 'actions', 'batches', 'rules', 'trips',
-      'clients', 'projects', 'contractors', 'invoices', 'retainers', 'income', 'reports', 'subscriptions', 'cashflow', 'budgets', 'planned',
+      'clients', 'projects', 'contractors', 'invoices', 'retainers', 'income', 'reports', 'subscriptions', 'cashflow', 'budgets', 'planned', 'taxes', 'retirement',
     ]) {
       void qc.invalidateQueries({ queryKey: [key] });
     }

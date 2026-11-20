@@ -20,3 +20,7 @@ export * from './tripProfit';
 export * from './recurring';
 export * from './replacements';
 export * from './cashflow';
+export * from './tax/tables';
+export * from './tax/estimate';
+export * from './tax/scheduleC';
+export * from './retirement';

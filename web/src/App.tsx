@@ -3,6 +3,8 @@ import { useDisclosure } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import {
   IconBuildingBank,
+  IconPigMoney,
+  IconReceiptTax,
   IconChartLine,
   IconRepeat,
   IconTargetArrow,
@@ -29,6 +31,8 @@ import { BudgetsPage } from './pages/BudgetsPage';
 import { CashFlowPage } from './pages/CashFlowPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { SubscriptionsPage } from './pages/SubscriptionsPage';
+import { RetirementPage } from './pages/RetirementPage';
+import { TaxesPage } from './pages/TaxesPage';
 import { ClientDetailPage } from './pages/ClientDetailPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { ContractorsPage } from './pages/ContractorsPage';
@@ -104,6 +108,8 @@ export function App() {
         { to: '/cashflow', label: 'Cash flow', icon: IconChartLine },
         { to: '/budgets', label: 'Budgets', icon: IconTargetArrow },
         { to: '/subscriptions', label: 'Subscriptions', icon: IconRepeat },
+        { to: '/taxes', label: 'Taxes', icon: IconReceiptTax },
+        { to: '/retirement', label: 'Retirement', icon: IconPigMoney },
       ],
     },
     {
@@ -179,6 +185,8 @@ export function App() {
           <Route path="/cashflow" element={<CashFlowPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />
           <Route path="/subscriptions" element={<SubscriptionsPage />} />
+          <Route path="/taxes" element={<TaxesPage />} />
+          <Route path="/retirement" element={<RetirementPage />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/accounts" element={<AccountsPage />} />

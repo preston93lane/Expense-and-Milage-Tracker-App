@@ -198,6 +198,25 @@ try {
     check(true, 'cash flow and budgets pages render');
   }
 
+  // Taxes + retirement.
+  await page.getByRole('link', { name: 'Taxes', exact: true }).click();
+  await page.getByText('Quarterly estimated payments (Form 1040-ES)').waitFor();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByText(/Schedule C — /).waitFor();
+  await shot('17-taxes');
+  check(true, 'taxes page shows Schedule C, estimate and quarterly plan');
+  await page.getByRole('link', { name: 'Retirement', exact: true }).click();
+  await page.getByRole('button', { name: 'Add account' }).click();
+  await page.getByLabel('Name').fill('Fidelity SEP-IRA');
+  await page.getByLabel('Balance today').fill('25000');
+  await page.getByLabel('Planned contribution per year').fill('12000');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('Birth year').fill('1990');
+  await page.getByRole('button', { name: 'Update' }).click();
+  await page.getByRole('img', { name: 'Projected retirement savings by age' }).waitFor();
+  await shot('18-retirement');
+  check(true, 'retirement account + projection chart');
+
   for (const [link, text] of [['Dashboard', 'By category'], ['Categories', 'Meals (business, 50%)'], ['Accounts', 'Capital One Venture'], ['Settings & backups', 'IRS standard mileage rates']]) {
     await page.getByRole('link', { name: link }).click();
     await page.getByText(text).first().waitFor();

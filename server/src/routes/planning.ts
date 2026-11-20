@@ -16,6 +16,7 @@ import type { FastifyInstance } from 'fastify';
 import { badRequest, optInt, optStr, toInt, type AppContext } from '../context';
 import type { DB } from '../db/database';
 import type { AccountRow } from '../db/rows';
+import { upcomingTaxPayments } from '../services/taxService';
 import { invoiceDetail } from './income';
 
 type Row = Record<string, any>;
@@ -239,14 +240,9 @@ export function planningRoutes(app: FastifyInstance, ctx: AppContext) {
       events.push({ date: p.date, amountCents: p.amount_cents, label: p.description, kind: 'planned' });
     }
 
-    // Estimated tax payments (from the Taxes page, when set up).
-    for (const t of db.prepare("SELECT * FROM settings WHERE key LIKE 'est_tax_due_%'").all() as Row[]) {
-      try {
-        const v = JSON.parse(t.value) as { date: string; amountCents: number };
-        if (v.date >= today && v.date <= end && v.amountCents > 0) events.push({ date: v.date, amountCents: -v.amountCents, label: 'Estimated tax payment', kind: 'tax' });
-      } catch {
-        /* ignore */
-      }
+    // Estimated tax payments still due (once a tax profile is set up on the Taxes page).
+    for (const t of upcomingTaxPayments(db, today)) {
+      if (t.date <= end) events.push({ date: t.date, amountCents: -t.amountCents, label: 'Federal estimated tax (1040-ES)', kind: 'tax' });
     }
 
     // Typical everyday spending: last 90 days, not recurring, not transfers.

@@ -339,6 +339,56 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 6,
+    name: 'taxes and retirement: tax profile, home office, retirement accounts',
+    sql: `
+      CREATE TABLE tax_profiles (
+        year INTEGER PRIMARY KEY,
+        filing_status TEXT NOT NULL DEFAULT 'single' CHECK (filing_status IN ('single','mfj','mfs','hoh')),
+        w2_wages_cents INTEGER NOT NULL DEFAULT 0,
+        other_income_cents INTEGER NOT NULL DEFAULT 0,
+        withholding_cents INTEGER NOT NULL DEFAULT 0,
+        prior_year_tax_cents INTEGER,
+        prior_year_agi_cents INTEGER,
+        state_rate_pct REAL NOT NULL DEFAULT 0,
+        projection_mode TEXT NOT NULL DEFAULT 'pace' CHECK (projection_mode IN ('pace','ytd','manual')),
+        projected_profit_cents INTEGER
+      );
+
+      CREATE TABLE home_office (
+        year INTEGER PRIMARY KEY,
+        method TEXT NOT NULL DEFAULT 'simplified' CHECK (method IN ('simplified','actual')),
+        office_sqft REAL NOT NULL DEFAULT 0,
+        home_sqft REAL NOT NULL DEFAULT 0,
+        months_used INTEGER NOT NULL DEFAULT 12
+      );
+
+      CREATE TABLE retirement_accounts (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('sep_ira','solo_401k','traditional_ira','roth_ira','401k','hsa','brokerage','other')),
+        balance_cents INTEGER NOT NULL DEFAULT 0,
+        balance_date TEXT,
+        expected_return_pct REAL NOT NULL DEFAULT 6,
+        planned_annual_cents INTEGER NOT NULL DEFAULT 0,
+        notes TEXT,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE retirement_contributions (
+        id INTEGER PRIMARY KEY,
+        account_id INTEGER NOT NULL REFERENCES retirement_accounts(id) ON DELETE CASCADE,
+        date TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        tax_year INTEGER NOT NULL,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        note TEXT
+      );
+      CREATE INDEX ix_retirement_contrib_tx ON retirement_contributions(transaction_id);
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
