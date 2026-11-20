@@ -24,6 +24,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api, qs, type Transaction, type TransactionList } from '../api';
 import { ClassBadge, Location, Money, PageHeader, SourceIcon } from '../components/bits';
 import { CategorySelect } from '../components/CategorySelect';
+import { ClientSelect } from '../components/PartySelects';
 import { TransactionDrawer } from '../components/TransactionDrawer';
 import { datePresets, money, shortDate, toIso } from '../format';
 import { notifyError, useAccountMap, useAccounts, useBulkUpdate, useCategoryMap, useRefreshAll } from '../hooks';
@@ -50,6 +51,9 @@ export function TransactionsPage() {
     categoryId: params.get('categoryId') ?? '',
     direction: params.get('direction') ?? '',
     tripId: params.get('tripId') ?? '',
+    clientId: params.get('clientId') ?? '',
+    projectId: params.get('projectId') ?? '',
+    contractorId: params.get('contractorId') ?? '',
     q: debounced,
   };
   const setFilter = (k: string, v: string | null | undefined) => {
@@ -170,6 +174,7 @@ export function TransactionsPage() {
             ]}
           />
           <CategorySelect label="Category" w={220} value={filters.categoryId ? Number(filters.categoryId) : null} onChange={(id) => setFilter('categoryId', id ? String(id) : null)} />
+          <ClientSelect label="Client" w={170} value={filters.clientId ? Number(filters.clientId) : null} onChange={(id) => setFilter('clientId', id ? String(id) : null)} />
           <SegmentedControl
             size="sm"
             value={filters.direction}
@@ -232,6 +237,7 @@ export function TransactionsPage() {
                 Transfer
               </Button>
               <CategorySelect size="xs" w={210} placeholder="Set category…" value={null} onChange={(id) => id && act({ categoryId: id })} />
+              <ClientSelect size="xs" w={170} placeholder="Set client…" value={null} onChange={(id) => id && act({ clientId: id })} />
               <Menu position="bottom-end">
                 <Menu.Target>
                   <Button size="compact-sm" variant="default" rightSection={<IconChevronDown size={14} />}>

@@ -36,7 +36,9 @@ function validateConditions(c: unknown): RuleConditions {
 function validateActions(a: unknown): RuleActions {
   const act = (a ?? {}) as RuleActions;
   if (act.classification && !['business', 'personal', 'transfer'].includes(act.classification)) badRequest('Unknown classification');
-  if (!act.classification && !act.categoryId) badRequest('A rule must set business/personal/transfer or a category');
+  if (!act.classification && !act.categoryId && !act.clientId && !act.contractorId) {
+    badRequest('A rule must set business/personal/transfer, a category, a client or a contractor');
+  }
   if (act.businessPct !== undefined && act.businessPct !== null && !(act.businessPct > 0 && act.businessPct < 100)) {
     badRequest('Business % must be between 1 and 99');
   }
@@ -178,6 +180,7 @@ export function ruleRoutes(app: FastifyInstance, ctx: AppContext) {
     const snaps = matches.map((t) => ({
       id: t.id, status: t.status, classification: t.classification, category_id: t.category_id, is_split: t.is_split,
       source: t.source, confidence: t.confidence, rule_id: t.rule_id, trip_id: t.trip_id, notes: t.notes,
+      client_id: t.client_id, project_id: t.project_id, contractor_id: t.contractor_id, payment_method: t.payment_method,
       splits: ctx.db.prepare('SELECT * FROM splits WHERE transaction_id = ?').all(t.id),
     }));
     ctx.db.transaction(() => {

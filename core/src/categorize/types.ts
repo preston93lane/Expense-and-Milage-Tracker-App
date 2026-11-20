@@ -35,6 +35,10 @@ export interface RuleActions {
   businessPct?: number;
   note?: string;
   tripId?: number | null;
+  /** Tag the client who paid you / the contractor you paid. */
+  clientId?: number | null;
+  projectId?: number | null;
+  contractorId?: number | null;
 }
 
 export interface Rule {
@@ -72,4 +76,7 @@ export interface CategorizeResult {
   note?: string;
   /** Business trip this transaction was matched to. */
   tripId?: number;
+  clientId?: number;
+  projectId?: number;
+  contractorId?: number;
 }

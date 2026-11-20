@@ -10,6 +10,12 @@ const EDITABLE_SETTINGS: Record<string, (v: unknown) => boolean> = {
   trip_window_before_days: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 365,
   trip_window_after_days: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 60,
   business_name: (v) => typeof v === 'string' && v.length <= 120,
+  business_address: (v) => typeof v === 'string' && v.length <= 500,
+  business_email: (v) => typeof v === 'string' && v.length <= 200,
+  business_phone: (v) => typeof v === 'string' && v.length <= 50,
+  invoice_footer: (v) => typeof v === 'string' && v.length <= 1000,
+  invoice_prefix: (v) => typeof v === 'string' && v.length <= 20,
+  invoice_next_number: (v) => Number.isInteger(v) && (v as number) > 0,
 };
 
 /** Categories whose totals are NOT Schedule C deductions. */

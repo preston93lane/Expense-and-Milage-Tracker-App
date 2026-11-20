@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import { api, type Rule, type Transaction } from '../api';
 import { Money, PageHeader } from '../components/bits';
 import { CategorySelect } from '../components/CategorySelect';
+import { ClientSelect, ContractorSelect } from '../components/PartySelects';
 import { shortDate } from '../format';
 import { notifyError, useAccountMap, useAccounts, useCategoryMap, useRefreshAll } from '../hooks';
 
@@ -199,6 +200,8 @@ function RuleEditor({ rule, onClose }: { rule: Rule | null; onClose: () => void 
   const [categoryId, setCategoryId] = useState<number | null>(rule?.actions.categoryId ?? null);
   const [businessPct, setBusinessPct] = useState<number | string>(rule?.actions.businessPct ?? '');
   const [note, setNote] = useState(rule?.actions.note ?? '');
+  const [clientId, setClientId] = useState<number | null>(rule?.actions.clientId ?? null);
+  const [contractorId, setContractorId] = useState<number | null>(rule?.actions.contractorId ?? null);
   const [priority, setPriority] = useState<number | string>(rule?.priority ?? 100);
   const [autoConfirm, setAutoConfirm] = useState(rule?.autoConfirm ?? true);
   const [test, setTest] = useState<{ count: number; reviewedCount: number; sample: Transaction[] } | null>(null);
@@ -215,6 +218,8 @@ function RuleEditor({ rule, onClose }: { rule: Rule | null; onClose: () => void 
       categoryId: classification === 'business' ? categoryId : null,
       businessPct: classification === 'business' && businessPct ? Number(businessPct) : undefined,
       note: note || undefined,
+      clientId: classification === 'business' ? clientId ?? undefined : undefined,
+      contractorId: classification === 'business' ? contractorId ?? undefined : undefined,
     },
   });
 
@@ -333,6 +338,12 @@ function RuleEditor({ rule, onClose }: { rule: Rule | null; onClose: () => void 
             </>
           )}
         </Group>
+        {classification === 'business' && (
+          <Group grow>
+            <ClientSelect label="Tag client (optional)" value={clientId} onChange={setClientId} />
+            <ContractorSelect label="Tag contractor (optional)" value={contractorId} onChange={setContractorId} />
+          </Group>
+        )}
         <TextInput label="Add a note (optional)" placeholder="e.g. Client lunches" value={note} onChange={(e) => setNote(e.currentTarget.value)} />
         <Group gap="lg">
           <Switch checked={autoConfirm} onChange={(e) => setAutoConfirm(e.currentTarget.checked)} label="Mark as reviewed automatically (off = only suggest)" />

@@ -30,6 +30,9 @@ function filtersFrom(q: Record<string, unknown>): TransactionFilters {
     accountId: optInt(q.accountId),
     batchId: optInt(q.batchId),
     tripId: q.tripId === 'none' ? 'none' : optInt(q.tripId),
+    clientId: optInt(q.clientId),
+    projectId: optInt(q.projectId),
+    contractorId: optInt(q.contractorId),
     status: status as TransactionFilters['status'],
     classification: classification as TransactionFilters['classification'],
     categoryId: optInt(q.categoryId),
@@ -96,6 +99,15 @@ export function transactionRoutes(app: FastifyInstance, ctx: AppContext) {
       reset: b.reset === true,
       notes: b.notes === undefined ? undefined : (optStr(b.notes) ?? null),
       tripId: b.tripId === undefined ? undefined : b.tripId === null ? null : toInt(b.tripId, 'tripId'),
+      clientId: b.clientId === undefined ? undefined : b.clientId === null ? null : toInt(b.clientId, 'clientId'),
+      projectId: b.projectId === undefined ? undefined : b.projectId === null ? null : toInt(b.projectId, 'projectId'),
+      contractorId: b.contractorId === undefined ? undefined : b.contractorId === null ? null : toInt(b.contractorId, 'contractorId'),
+      paymentMethod:
+        b.paymentMethod === undefined
+          ? undefined
+          : b.paymentMethod === 'direct' || b.paymentMethod === 'card_or_processor'
+            ? b.paymentMethod
+            : null,
     });
   });
 

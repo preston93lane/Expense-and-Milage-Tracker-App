@@ -15,3 +15,4 @@ export * from './categorize/transfers';
 export * from './categorize/pipeline';
 export * from './tax/mileageRates';
 export * from './trips';
+export * from './income';

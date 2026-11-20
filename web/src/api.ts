@@ -97,6 +97,10 @@ export interface Transaction {
   ruleId: number | null;
   transferPairId: number | null;
   tripId: number | null;
+  clientId: number | null;
+  projectId: number | null;
+  contractorId: number | null;
+  paymentMethod: 'direct' | 'card_or_processor' | null;
   notes: string | null;
 }
 
@@ -226,6 +230,9 @@ export interface Trip {
   beforeDays: number;
   afterDays: number;
   purpose: string | null;
+  clientId: number | null;
+  projectId: number | null;
+  agreedFeeCents: number | null;
   createdAt: string;
 }
 
@@ -264,6 +271,145 @@ export interface TripSuggestion {
   endDate: string;
   transactionCount: number;
   totalCents: number;
+}
+
+export interface Client {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  archived: boolean;
+  yearIncomeCents: number;
+  allTimeIncomeCents: number;
+  lastPaymentDate: string | null;
+  outstandingCents: number;
+  activeRetainers: number;
+}
+
+export interface Project {
+  id: number;
+  clientId: number | null;
+  clientName: string | null;
+  name: string;
+  status: 'active' | 'completed' | 'archived';
+  budgetCents: number | null;
+  notes: string | null;
+}
+
+export interface Retainer {
+  id: number;
+  clientId: number;
+  clientName?: string;
+  name: string;
+  amountCents: number;
+  frequency: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+  startDate: string;
+  endDate: string | null;
+  active: boolean;
+  notes: string | null;
+}
+
+export interface ExpectedPayment {
+  retainerId: number;
+  clientId: number;
+  clientName: string;
+  name: string;
+  dueDate: string;
+  amountCents: number;
+  status: 'received' | 'upcoming' | 'late' | 'missed';
+  transactionId: number | null;
+}
+
+export interface InvoiceLineApi {
+  id?: number;
+  description: string;
+  quantity: number;
+  unitCents: number;
+}
+
+export interface Invoice {
+  id: number;
+  clientId: number;
+  clientName: string;
+  client: { id: number; name: string; email: string | null; address: string | null } | null;
+  projectId: number | null;
+  tripId: number | null;
+  number: string | null;
+  issueDate: string;
+  dueDate: string | null;
+  status: 'draft' | 'sent' | 'void';
+  notes: string | null;
+  lines: InvoiceLineApi[];
+  payments: { id: number; transactionId: number | null; amountCents: number; date: string; note: string | null }[];
+  totalCents: number;
+  paidCents: number;
+  balanceCents: number;
+  state: 'draft' | 'void' | 'paid' | 'partial' | 'overdue' | 'open';
+  candidates: { id: number; date: string; amountCents: number; clientId: number | null; description: string }[];
+  business?: { name: string; address: string; email: string; phone: string; footer: string };
+}
+
+export interface ClientDetail {
+  client: { id: number; name: string; email: string | null; phone: string | null; address: string | null; notes: string | null; archived: boolean };
+  year: number;
+  incomeCents: number;
+  expenseCents: number;
+  profitCents: number;
+  monthly: { month: string; incomeCents: number }[];
+  invoices: Invoice[];
+  projects: { id: number; name: string; status: string; budgetCents: number | null; incomeCents: number; expenseCents: number }[];
+  retainers: Retainer[];
+  schedule: ExpectedPayment[];
+  trips: { id: number; name: string; startDate: string; endDate: string }[];
+  transactions: Transaction[];
+}
+
+export type EntityType = 'individual' | 'sole_prop' | 'llc' | 'partnership' | 's_corp' | 'c_corp' | 'other';
+
+export interface Contractor1099Summary {
+  contractorId: number;
+  name: string;
+  year: number;
+  thresholdCents: number;
+  directCents: number;
+  processorCents: number;
+  totalCents: number;
+  needs1099: boolean;
+  approaching: boolean;
+  exemptCorporation: boolean;
+  warnings: string[];
+}
+
+export interface Contractor {
+  id: number;
+  name: string;
+  businessName: string | null;
+  email: string | null;
+  address: string | null;
+  tinLast4: string | null;
+  entityType: EntityType;
+  w9Received: boolean;
+  w9Date: string | null;
+  notes: string | null;
+  archived: boolean;
+  summary?: Contractor1099Summary;
+  paymentCount?: number;
+}
+
+export interface IncomeSummary {
+  year: number;
+  incomeCents: number;
+  goalCents: number | null;
+  projectedCents: number | null;
+  monthly: { month: string; incomeCents: number }[];
+  byClient: { clientId: number | null; name: string; incomeCents: number }[];
+  outstandingCents: number;
+  overdueCents: number;
+  overdueCount: number;
+  expectedNext30Cents: number;
+  upcomingRetainers: ExpectedPayment[];
 }
 
 export type { TaxLineInfo };

@@ -1,4 +1,4 @@
-import { Alert, Button, Code, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Code, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { IconArrowBackUp, IconDatabase, IconLock, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -161,6 +161,48 @@ export function SettingsPage() {
               defaultValue={(settings.data?.business_name as string) ?? ''}
               key={String(settings.data?.business_name)}
               onBlur={(e) => saveSetting.mutate({ business_name: e.currentTarget.value })}
+            />
+            {(
+              [
+                ['business_address', 'Business address (on invoices)', true],
+                ['business_email', 'Business email', false],
+                ['business_phone', 'Business phone', false],
+                ['invoice_footer', 'Invoice footer — how to pay you (e.g. Zelle/ACH details, terms)', true],
+                ['invoice_prefix', 'Invoice number prefix', false],
+              ] as [string, string, boolean][]
+            ).map(([key, label, multi]) =>
+              multi ? (
+                <Textarea
+                  key={`${key}-${String(settings.data?.[key])}`}
+                  mt="xs"
+                  autosize
+                  minRows={2}
+                  label={label}
+                  defaultValue={(settings.data?.[key] as string) ?? ''}
+                  onBlur={(e) => saveSetting.mutate({ [key]: e.currentTarget.value })}
+                />
+              ) : (
+                <TextInput
+                  key={`${key}-${String(settings.data?.[key])}`}
+                  mt="xs"
+                  label={label}
+                  placeholder={key === 'invoice_prefix' ? 'INV-' : undefined}
+                  defaultValue={(settings.data?.[key] as string) ?? ''}
+                  onBlur={(e) => saveSetting.mutate({ [key]: e.currentTarget.value })}
+                />
+              ),
+            )}
+            <NumberInput
+              mt="xs"
+              label="Next invoice number"
+              placeholder="1001"
+              min={1}
+              key={`next-${String(settings.data?.invoice_next_number)}`}
+              defaultValue={(settings.data?.invoice_next_number as number) ?? undefined}
+              onBlur={(e) => {
+                const n = Number(e.currentTarget.value.replace(/\D/g, ''));
+                if (n > 0) saveSetting.mutate({ invoice_next_number: n });
+              }}
             />
             <Text size="sm" fw={500} mt="md" mb={4}>
               Vehicle expense method

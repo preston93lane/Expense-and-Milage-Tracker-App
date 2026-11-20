@@ -64,8 +64,32 @@ export function loadExceptions(db: DB): Map<number, Set<number>> {
   return map;
 }
 
+/** merchantKey → the client / contractor you most often tag it with. */
+export function loadPartyHistory(db: DB): Map<string, { clientId: number | null; contractorId: number | null }> {
+  const pick = (col: 'client_id' | 'contractor_id') =>
+    db
+      .prepare(
+        `SELECT merchant_key, ${col} AS party, COUNT(*) AS n FROM transactions
+          WHERE ${col} IS NOT NULL AND status = 'reviewed' GROUP BY merchant_key, ${col} ORDER BY n DESC`,
+      )
+      .all() as { merchant_key: string; party: number; n: number }[];
+  const map = new Map<string, { clientId: number | null; contractorId: number | null }>();
+  for (const r of pick('client_id')) {
+    const e = map.get(r.merchant_key) ?? { clientId: null, contractorId: null };
+    if (e.clientId === null) e.clientId = r.party;
+    map.set(r.merchant_key, e);
+  }
+  for (const r of pick('contractor_id')) {
+    const e = map.get(r.merchant_key) ?? { clientId: null, contractorId: null };
+    if (e.contractorId === null) e.contractorId = r.party;
+    map.set(r.merchant_key, e);
+  }
+  return map;
+}
+
 export function buildContext(db: DB): CategorizeContext {
   return {
+    partyHistory: loadPartyHistory(db),
     exceptions: loadExceptions(db),
     rules: loadRules(db),
     history: loadHistory(db),
@@ -102,6 +126,8 @@ export function applyResult(db: DB, txId: number, amountCents: number, r: Catego
     `UPDATE transactions
         SET status = @status, classification = @classification, category_id = @categoryId,
             source = @source, confidence = @confidence, rule_id = @ruleId, is_split = @isSplit, trip_id = @tripId,
+            client_id = COALESCE(@clientId, client_id), project_id = COALESCE(@projectId, project_id),
+            contractor_id = COALESCE(@contractorId, contractor_id),
             notes = COALESCE(notes, @note), updated_at = datetime('now')
       WHERE id = @id`,
   ).run({
@@ -115,6 +141,9 @@ export function applyResult(db: DB, txId: number, amountCents: number, r: Catego
     isSplit: isSplit ? 1 : 0,
     note: r.note ?? null,
     tripId: r.tripId ?? null,
+    clientId: r.clientId ?? null,
+    projectId: r.projectId ?? null,
+    contractorId: r.contractorId ?? null,
   });
   if (isSplit) {
     const [biz, pers] = splitByPercents(amountCents, [r.businessPct!, 100 - r.businessPct!]);
@@ -157,6 +186,8 @@ export function recategorize(db: DB, opts: { merchantKeys?: string[]; ids?: numb
         r.categoryId !== t.category_id ||
         r.source !== t.source ||
         (r.tripId ?? null) !== t.trip_id ||
+        (r.clientId !== undefined && r.clientId !== t.client_id) ||
+        (r.contractorId !== undefined && r.contractorId !== t.contractor_id) ||
         (r.ruleId ?? null) !== t.rule_id
       ) {
         applyResult(db, t.id, t.amount_cents, r);

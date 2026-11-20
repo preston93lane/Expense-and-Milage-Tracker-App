@@ -52,6 +52,10 @@ export interface TransactionRow {
   rule_id: number | null;
   transfer_pair_id: number | null;
   trip_id: number | null;
+  client_id: number | null;
+  project_id: number | null;
+  contractor_id: number | null;
+  payment_method: 'direct' | 'card_or_processor' | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -159,6 +163,10 @@ export function transactionToApi(t: TransactionRow, splits: SplitRow[] = []) {
     ruleId: t.rule_id,
     transferPairId: t.transfer_pair_id,
     tripId: t.trip_id,
+    clientId: t.client_id,
+    projectId: t.project_id,
+    contractorId: t.contractor_id,
+    paymentMethod: t.payment_method,
     notes: t.notes,
   };
 }
@@ -173,6 +181,9 @@ export interface TripRow {
   purpose: string | null;
   before_days: number;
   after_days: number;
+  client_id: number | null;
+  project_id: number | null;
+  agreed_fee_cents: number | null;
   created_at: string;
 }
 
@@ -190,7 +201,14 @@ export function tripToWindow(t: TripRow) {
 }
 
 export function tripToApi(t: TripRow) {
-  return { ...tripToWindow(t), purpose: t.purpose, createdAt: t.created_at };
+  return {
+    ...tripToWindow(t),
+    purpose: t.purpose,
+    clientId: t.client_id,
+    projectId: t.project_id,
+    agreedFeeCents: t.agreed_fee_cents,
+    createdAt: t.created_at,
+  };
 }
 
 export type ApiTransaction = ReturnType<typeof transactionToApi>;

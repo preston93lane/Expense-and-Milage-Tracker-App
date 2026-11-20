@@ -22,6 +22,8 @@ export interface CategorizeContext {
   homeState?: string | null;
   /** Per-transaction rule exceptions (only used by the server; kept here for typing). */
   exceptions?: Map<number, Set<number>>;
+  /** merchantKey → the client/contractor you usually tag it with. */
+  partyHistory?: Map<string, { clientId: number | null; contractorId: number | null }>;
 }
 
 const NONE: CategorizeResult = {
@@ -57,6 +59,19 @@ export function suggestFromHistory(entries: HistoryEntry[] | undefined): Categor
  *  6. otherwise → Needs Review with no hint
  */
 export function categorize(t: TxnFacts & { merchantKey: string }, ctx: CategorizeContext): CategorizeResult {
+  const r = categorizeInner(t, ctx);
+  // Fill in who the money came from / went to, from how you tagged this merchant before.
+  if (r.classification === 'business' || (r.classification === null && r.categoryId !== null)) {
+    const party = ctx.partyHistory?.get(t.merchantKey.toUpperCase());
+    if (party) {
+      if (r.clientId === undefined && party.clientId) r.clientId = party.clientId;
+      if (r.contractorId === undefined && party.contractorId) r.contractorId = party.contractorId;
+    }
+  }
+  return r;
+}
+
+function categorizeInner(t: TxnFacts & { merchantKey: string }, ctx: CategorizeContext): CategorizeResult {
   const rule = firstMatchingRule(ctx.rules, t);
   if (rule) {
     const a = rule.actions;
@@ -70,6 +85,9 @@ export function categorize(t: TxnFacts & { merchantKey: string }, ctx: Categoriz
       confidence: 1,
       ruleId: rule.id,
       note: a.note,
+      ...(a.clientId ? { clientId: a.clientId } : {}),
+      ...(a.projectId ? { projectId: a.projectId } : {}),
+      ...(a.contractorId ? { contractorId: a.contractorId } : {}),
     };
   }
 

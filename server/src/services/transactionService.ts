@@ -14,6 +14,9 @@ export interface TransactionFilters {
   direction?: 'in' | 'out';
   batchId?: number;
   tripId?: number | 'none';
+  clientId?: number;
+  projectId?: number;
+  contractorId?: number;
   ids?: number[];
   limit?: number;
   offset?: number;
@@ -38,6 +41,18 @@ function buildWhere(f: TransactionFilters): { sql: string; params: unknown[] } {
   if (f.batchId) {
     where.push('t.batch_id = ?');
     params.push(f.batchId);
+  }
+  if (f.clientId) {
+    where.push('t.client_id = ?');
+    params.push(f.clientId);
+  }
+  if (f.projectId) {
+    where.push('t.project_id = ?');
+    params.push(f.projectId);
+  }
+  if (f.contractorId) {
+    where.push('t.contractor_id = ?');
+    params.push(f.contractorId);
   }
   if (f.tripId === 'none') where.push('t.trip_id IS NULL');
   else if (f.tripId) {
@@ -127,6 +142,10 @@ interface Snapshot {
   confidence: number | null;
   rule_id: number | null;
   trip_id: number | null;
+  client_id: number | null;
+  project_id: number | null;
+  contractor_id: number | null;
+  payment_method: string | null;
   notes: string | null;
   splits: SplitRow[];
 }
@@ -149,6 +168,10 @@ function snapshot(db: DB, ids: number[]): Snapshot[] {
     confidence: r.confidence,
     rule_id: r.rule_id,
     trip_id: r.trip_id,
+    client_id: r.client_id,
+    project_id: r.project_id,
+    contractor_id: r.contractor_id,
+    payment_method: r.payment_method,
     notes: r.notes,
     splits: splits.get(r.id) ?? [],
   }));
@@ -168,7 +191,9 @@ export function undoAction(db: DB, actionId: number): { restored: number } {
   const snaps = JSON.parse(row.undo_json) as Snapshot[];
   const upd = db.prepare(
     `UPDATE transactions SET status=@status, classification=@classification, category_id=@category_id, is_split=@is_split,
-            source=@source, confidence=@confidence, rule_id=@rule_id, trip_id=@trip_id, notes=@notes, updated_at=datetime('now')
+            source=@source, confidence=@confidence, rule_id=@rule_id, trip_id=@trip_id, notes=@notes,
+            client_id=@client_id, project_id=@project_id, contractor_id=@contractor_id, payment_method=@payment_method,
+            updated_at=datetime('now')
       WHERE id=@id`,
   );
   const delSplits = db.prepare('DELETE FROM splits WHERE transaction_id = ?');
@@ -178,7 +203,14 @@ export function undoAction(db: DB, actionId: number): { restored: number } {
   let restored = 0;
   db.transaction(() => {
     for (const s of snaps) {
-      const res = upd.run({ ...s, trip_id: s.trip_id ?? null });
+      const res = upd.run({
+        ...s,
+        trip_id: s.trip_id ?? null,
+        client_id: s.client_id ?? null,
+        project_id: s.project_id ?? null,
+        contractor_id: s.contractor_id ?? null,
+        payment_method: s.payment_method ?? null,
+      });
       if (res.changes === 0) continue; // transaction was deleted since
       delSplits.run(s.id);
       for (const sp of s.splits) insSplit.run(s.id, sp.amount_cents, sp.classification, sp.category_id, sp.note);
@@ -217,6 +249,10 @@ export interface BulkChange {
   notes?: string | null;
   /** Assign to a business trip (null = remove from trip). */
   tripId?: number | null;
+  clientId?: number | null;
+  projectId?: number | null;
+  contractorId?: number | null;
+  paymentMethod?: 'direct' | 'card_or_processor' | null;
 }
 
 export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actionId: number | null; relearned: number } {
@@ -236,6 +272,10 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
       let isSplit = s.is_split;
       let notes = s.notes;
       let tripId = s.trip_id;
+      let clientId = s.client_id;
+      let projectId = s.project_id;
+      let contractorId = s.contractor_id;
+      let paymentMethod = s.payment_method;
 
       if (change.reset) {
         status = 'unreviewed';
@@ -276,14 +316,18 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
       }
       if (change.notes !== undefined) notes = change.notes;
       if (change.tripId !== undefined) tripId = change.tripId;
+      if (change.clientId !== undefined) clientId = change.clientId;
+      if (change.projectId !== undefined) projectId = change.projectId;
+      if (change.contractorId !== undefined) contractorId = change.contractorId;
+      if (change.paymentMethod !== undefined) paymentMethod = change.paymentMethod;
 
       if (isSplit === 0 && s.is_split === 1) db.prepare('DELETE FROM splits WHERE transaction_id = ?').run(s.id);
       const res = db
         .prepare(
           `UPDATE transactions SET status=?, classification=?, category_id=?, source=?, confidence=?, is_split=?, notes=?,
-                  trip_id=?, updated_at=datetime('now') WHERE id=?`,
+                  trip_id=?, client_id=?, project_id=?, contractor_id=?, payment_method=?, updated_at=datetime('now') WHERE id=?`,
         )
-        .run(status, classification, categoryId, source, confidence, isSplit, notes, tripId, s.id);
+        .run(status, classification, categoryId, source, confidence, isSplit, notes, tripId, clientId, projectId, contractorId, paymentMethod, s.id);
       updated += res.changes;
     }
   })();
@@ -299,11 +343,15 @@ export function bulkUpdate(db: DB, change: BulkChange): { updated: number; actio
   }
   if (change.notes !== undefined) summaryParts.push('edited note');
   if (change.tripId !== undefined) summaryParts.push(change.tripId ? 'added to trip' : 'removed from trip');
+  if (change.clientId !== undefined) summaryParts.push(change.clientId ? 'client set' : 'client cleared');
+  if (change.projectId !== undefined) summaryParts.push(change.projectId ? 'project set' : 'project cleared');
+  if (change.contractorId !== undefined) summaryParts.push(change.contractorId ? 'contractor set' : 'contractor cleared');
+  if (change.paymentMethod !== undefined) summaryParts.push('payment method set');
   const actionId = logAction(db, `${updated} transaction${updated === 1 ? '' : 's'}: ${summaryParts.join(', ')}`, snaps);
 
   // Learn as you go: refresh suggestions for other undecided transactions from the same merchants.
   let relearned = 0;
-  if (!change.reset && (change.classification || change.categoryId !== undefined || change.approve)) {
+  if (!change.reset && (change.classification || change.categoryId !== undefined || change.approve || change.clientId || change.contractorId)) {
     const keys = (
       db.prepare(`SELECT DISTINCT merchant_key FROM transactions WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids) as {
         merchant_key: string;

@@ -131,6 +131,33 @@ try {
   await shot('10-trip-report');
   check(true, 'expenses added to the trip');
 
+  // Income: client → invoice → contractor.
+  await page.getByRole('link', { name: 'Clients' }).click();
+  await page.getByRole('button', { name: 'New client' }).click();
+  await page.getByLabel('Name').fill('Acme Corp');
+  await page.getByLabel('Email').fill('ap@acme.example');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('heading', { name: 'Acme Corp' }).waitFor();
+  await page.getByRole('button', { name: 'New invoice' }).click();
+  await page.getByPlaceholder('e.g. Event coverage — half day').fill('Event coverage');
+  await page.getByRole('textbox', { name: 'Rate' }).or(page.locator('input').nth(0)).first();
+  const rate = page.locator('table input').nth(2);
+  await rate.fill('850');
+  await page.getByRole('button', { name: 'Create invoice' }).click();
+  await page.getByText('Payments').first().waitFor();
+  await shot('11-invoice');
+  check(await page.getByText('$850.00 still owed').isVisible(), 'invoice created for $850');
+  await page.getByRole('link', { name: 'Contractors & 1099s' }).click();
+  await page.getByRole('button', { name: 'New contractor' }).click();
+  await page.getByLabel('Name (as on their W-9)').fill('Dana Editor');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByText('Dana Editor').waitFor();
+  await shot('12-contractors');
+  await page.getByRole('link', { name: 'Income' }).click();
+  await page.getByText('Owed to you').waitFor();
+  await shot('13-income');
+  check(true, 'income, clients, invoices and contractors pages work');
+
   for (const [link, text] of [['Dashboard', 'By category'], ['Categories', 'Meals (business, 50%)'], ['Accounts', 'Capital One Venture'], ['Settings & backups', 'IRS standard mileage rates']]) {
     await page.getByRole('link', { name: link }).click();
     await page.getByText(text).first().waitFor();

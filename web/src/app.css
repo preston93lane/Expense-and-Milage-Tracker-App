@@ -35,3 +35,20 @@ body {
     display: none !important;
   }
 }
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  .print-only {
+    display: block;
+  }
+  .mantine-AppShell-main {
+    padding: 0 !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

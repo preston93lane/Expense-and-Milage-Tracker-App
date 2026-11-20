@@ -26,7 +26,10 @@ export function useAccountMap() {
 export function useRefreshAll() {
   const qc = useQueryClient();
   return () => {
-    for (const key of ['transactions', 'dashboard', 'review', 'accounts', 'categories', 'actions', 'batches', 'rules', 'trips']) {
+    for (const key of [
+      'transactions', 'dashboard', 'review', 'accounts', 'categories', 'actions', 'batches', 'rules', 'trips',
+      'clients', 'projects', 'contractors', 'invoices', 'retainers', 'income', 'reports',
+    ]) {
       void qc.invalidateQueries({ queryKey: [key] });
     }
   };
@@ -86,6 +89,11 @@ export interface BulkInput {
   approve?: boolean;
   reset?: boolean;
   notes?: string | null;
+  tripId?: number | null;
+  clientId?: number | null;
+  projectId?: number | null;
+  contractorId?: number | null;
+  paymentMethod?: 'direct' | 'card_or_processor' | null;
   /** Don't show a toast (e.g. inline single edits). */
   quiet?: boolean;
 }

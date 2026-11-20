@@ -11,6 +11,7 @@ import { notifyError, useAccountMap, useBulkUpdate, useCategoryMap, useRefreshAl
 import { ClassBadge, Location, Money, SourceIcon } from './bits';
 import { CategorySelect } from './CategorySelect';
 import { SplitEditor, type SplitLineInput } from './SplitEditor';
+import { ClientSelect, ContractorSelect, ProjectSelect } from './PartySelects';
 
 export function useCreateRuleFromTransaction() {
   const refresh = useRefreshAll();
@@ -168,6 +169,47 @@ export function TransactionDrawer({ id, onClose }: { id: number | null; onClose:
                 </Button>
               )}
             </Stack>
+          )}
+
+          {t.classification !== 'personal' && t.classification !== 'transfer' && (
+            <>
+              <Divider label={t.amountCents > 0 ? 'Who paid you' : 'Who / what for'} labelPosition="left" />
+              <Group grow align="flex-start">
+                <ClientSelect
+                  label="Client"
+                  description={t.amountCents > 0 ? 'Who this payment is from' : 'Optional: spent for this client'}
+                  value={t.clientId}
+                  onChange={(cid) => bulk.mutate({ ids: [t.id], clientId: cid, quiet: true })}
+                />
+                <ProjectSelect
+                  label="Project"
+                  description="Optional"
+                  clientId={t.clientId}
+                  value={t.projectId}
+                  onChange={(pid) => bulk.mutate({ ids: [t.id], projectId: pid, quiet: true })}
+                />
+              </Group>
+              {t.amountCents < 0 && (
+                <ContractorSelect
+                  label="Contractor paid"
+                  description="Tag payments to freelancers/helpers so the app can tell you when a 1099-NEC is due"
+                  value={t.contractorId}
+                  onChange={(cid) => bulk.mutate({ ids: [t.id], contractorId: cid, quiet: true })}
+                />
+              )}
+              {t.contractorId && t.amountCents < 0 && (
+                <SegmentedControl
+                  size="xs"
+                  value={t.paymentMethod ?? ''}
+                  onChange={(v) => bulk.mutate({ ids: [t.id], paymentMethod: (v || null) as 'direct' | null, quiet: true })}
+                  data={[
+                    { value: '', label: 'Paid how: automatic' },
+                    { value: 'direct', label: 'Check / bank / Zelle / cash' },
+                    { value: 'card_or_processor', label: 'Card / PayPal / processor' },
+                  ]}
+                />
+              )}
+            </>
           )}
 
           <Divider label="Split" labelPosition="left" />
