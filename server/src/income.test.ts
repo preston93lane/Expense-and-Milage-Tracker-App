@@ -134,3 +134,45 @@ describe('contractors and 1099-NEC', () => {
     expect(tagged.total).toBe(3);
   });
 });
+
+describe('trip profitability', () => {
+  it('computes income (deposits, invoices, agreed fee), costs and profit per trip', async () => {
+    const acct = (await t.call('POST', '/api/accounts', { name: 'Card', type: 'credit_card' })).body.id;
+    await t.call('POST', '/api/import/commit', {
+      accountId: acct,
+      fileName: 'trip.csv',
+      content: [
+        'Date,Description,Amount',
+        '10/12/2026,HERTZ RENT-A-CAR ROMULUS MI,-200.00',
+        '10/13/2026,MARRIOTT DETROIT DOWNTOWN DETROIT MI,-600.00',
+        '10/20/2026,ACME CORP ACH PAYMENT,1500.00',
+      ].join('\n'),
+    });
+    const acme = (await t.call('POST', '/api/clients', { name: 'Acme Corp' })).body;
+    const trip = (await t.call('POST', '/api/trips', { name: 'Detroit', startDate: '2026-10-12', endDate: '2026-10-15', destState: 'MI', clientId: acme.id, agreedFeeCents: 250000 })).body;
+    expect(trip).toMatchObject({ clientId: acme.id, agreedFeeCents: 250000 });
+
+    let d = (await t.call('GET', `/api/trips/${trip.id}`)).body;
+    const expenseItems = d.candidates.filter((c: any) => c.transaction.amountCents < 0);
+    await t.call('POST', `/api/trips/${trip.id}/assign`, { items: expenseItems.map((c: any) => ({ id: c.transaction.id, categoryId: c.suggestedCategoryId })) });
+
+    d = (await t.call('GET', `/api/trips/${trip.id}`)).body;
+    expect(d.profit).toMatchObject({ incomeCents: 250000, incomeSource: 'agreed_fee', incomeIsEstimate: true, costCents: 80000, profitCents: 170000, days: 4 });
+
+    // Tag the client's deposit to the trip (it's offered as a candidate) → real income replaces the estimate.
+    const dep = d.incomeCandidates.find((x: any) => x.amountCents === 150000);
+    expect(dep).toBeTruthy();
+    const cats = (await t.call('GET', '/api/categories')).body as any[];
+    await t.call('POST', '/api/transactions/bulk', { ids: [dep.id], categoryId: cats.find((c) => c.key === 'income').id, tripId: trip.id });
+    // And an unpaid invoice for the rest.
+    await t.call('POST', '/api/invoices', { clientId: acme.id, tripId: trip.id, issueDate: '2026-10-20', lines: [{ description: 'Balance', quantity: 1, unitCents: 100000 }] });
+    d = (await t.call('GET', `/api/trips/${trip.id}`)).body;
+    expect(d.profit).toMatchObject({ receivedCents: 150000, invoicedOpenCents: 100000, incomeCents: 250000, incomeSource: 'received+invoiced', costCents: 80000 });
+    expect(d.totals.totalCents).toBe(80000); // income is not counted as an expense
+    expect(d.income).toHaveLength(1);
+
+    const list = (await t.call('GET', '/api/trips')).body;
+    expect(list[0]).toMatchObject({ clientName: 'Acme Corp' });
+    expect(list[0].profit.profitCents).toBe(170000);
+  });
+});

@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Button, Checkbox, Group, Modal, Paper, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Checkbox, Divider, Group, Modal, Paper, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { IconArrowLeft, IconCheck, IconMapPin, IconPencil, IconPrinter, IconTrash } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,7 +9,111 @@ import { CategorySelect } from '../components/CategorySelect';
 import { TransactionDrawer } from '../components/TransactionDrawer';
 import { money, plural, shortDate } from '../format';
 import { notifyError, showUndoToast, useAccountMap, useCategoryMap, useRefreshAll, useUndo } from '../hooks';
-import { TripModal } from './TripsPage';
+import { TripModal, VerdictBadge } from './TripsPage';
+
+const SOURCE_TEXT: Record<TripDetail['profit']['incomeSource'], string> = {
+  received: 'Payments received',
+  'received+invoiced': 'Received + still owed on invoices',
+  invoiced: 'Invoiced, not paid yet',
+  agreed_fee: 'Agreed fee (estimate until you’re paid)',
+  none: 'No income recorded for this trip yet',
+};
+
+function ProfitPanel({ data, onAttach }: { data: TripDetail; onAttach: (txId: number) => void }) {
+  const p = data.profit;
+  return (
+    <Paper withBorder p="lg" mb="lg">
+      <Group justify="space-between" mb="sm" wrap="wrap">
+        <Title order={4}>Was it worth it?</Title>
+        <VerdictBadge p={p} />
+      </Group>
+      <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="md">
+        <Stat label="Income" value={money(p.incomeCents)} hint={SOURCE_TEXT[p.incomeSource]} />
+        <Stat label="Costs" value={money(p.costCents)} hint="Trip expenses (mileage once tracked)" />
+        <Stat label="Profit" value={money(p.profitCents)} color={p.profitCents < 0 ? 'red' : 'teal.8'} />
+        <Stat label="Margin" value={p.marginPct === null ? '—' : `${p.marginPct}%`} />
+        <Stat label="Cost per day" value={money(p.costPerDayCents)} hint={`${p.days} day${p.days === 1 ? '' : 's'}`} />
+        <Stat label="Profit per day" value={money(p.profitPerDayCents)} />
+      </SimpleGrid>
+
+      <Divider my="md" label="Income for this trip" labelPosition="left" className="no-print" />
+      <Stack gap={4}>
+        {data.income.map((t) => (
+          <Group key={t.id} justify="space-between">
+            <Text size="sm">
+              {shortDate(t.date)} · {t.merchant}
+            </Text>
+            <Money cents={t.amountCents} size="sm" />
+          </Group>
+        ))}
+        {p.invoices.map((i) => (
+          <Group key={i.id} justify="space-between">
+            <Anchor component={Link} to={`/invoices/${i.id}`} size="sm">
+              Invoice {i.number} ({i.state})
+            </Anchor>
+            <Text size="sm" ff="monospace">
+              {money(i.totalCents)}
+              {i.balanceCents ? ` · ${money(i.balanceCents)} owed` : ''}
+            </Text>
+          </Group>
+        ))}
+      </Stack>
+      <Group mt="sm" gap="xs" className="no-print">
+        <Button
+          size="xs"
+          variant="default"
+          component={Link}
+          to={`/invoices/new?tripId=${data.trip.id}${data.trip.clientId ? `&clientId=${data.trip.clientId}` : ''}`}
+        >
+          Create invoice for this trip
+        </Button>
+        {!data.trip.clientId && (
+          <Text size="xs" c="dimmed">
+            Tip: set the client on the trip (Edit) to see their payments here.
+          </Text>
+        )}
+      </Group>
+      {data.incomeCandidates.length > 0 && (
+        <div className="no-print">
+          <Text size="xs" c="dimmed" mt="md" mb={4}>
+            Deposits around this trip that could be its payment:
+          </Text>
+          {data.incomeCandidates.slice(0, 6).map((t) => (
+            <Group key={t.id} justify="space-between" py={2}>
+              <Text size="sm">
+                {shortDate(t.date)} · {t.merchant}
+              </Text>
+              <Group gap="xs">
+                <Money cents={t.amountCents} size="sm" />
+                <Button size="compact-xs" variant="light" onClick={() => onAttach(t.id)}>
+                  Count toward this trip
+                </Button>
+              </Group>
+            </Group>
+          ))}
+        </div>
+      )}
+    </Paper>
+  );
+}
+
+function Stat({ label, value, hint, color }: { label: string; value: string; hint?: string; color?: string }) {
+  return (
+    <div>
+      <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+        {label}
+      </Text>
+      <Text fw={700} fz="lg" ff="monospace" c={color}>
+        {value}
+      </Text>
+      {hint && (
+        <Text size="xs" c="dimmed">
+          {hint}
+        </Text>
+      )}
+    </div>
+  );
+}
 
 const REASON_TITLE: Record<TripCandidate['reason'], string> = {
   booked_before: 'Booked before the trip',
@@ -65,6 +169,21 @@ export function TripDetailPage() {
       refresh();
       showUndoToast(`${plural(r.updated, 'expense')} taken off the trip (back to Needs Review)`, r.actionId, (a) => undo.mutate(a));
     },
+    onError: notifyError,
+  });
+  const incomeCategoryId = [...categories.values()].find((c) => c.key === 'income')?.id;
+  const attachIncome = useMutation({
+    mutationFn: (txId: number) => {
+      const tx = data?.incomeCandidates.find((t) => t.id === txId);
+      const isIncome = tx?.categoryId ? categories.get(tx.categoryId)?.kind === 'income' : false;
+      return api.post('/api/transactions/bulk', {
+        ids: [txId],
+        tripId: id,
+        ...(data?.trip.clientId ? { clientId: data.trip.clientId } : {}),
+        ...(isIncome && tx?.status === 'reviewed' ? {} : { categoryId: isIncome ? tx!.categoryId : incomeCategoryId }),
+      });
+    },
+    onSuccess: refresh,
     onError: notifyError,
   });
   const del = useMutation({
@@ -174,6 +293,8 @@ export function TripDetailPage() {
           </Table>
         )}
       </Paper>
+
+      <ProfitPanel data={data} onAttach={(tid) => attachIncome.mutate(tid)} />
 
       {data.candidates.length > 0 && (
         <Paper withBorder p="md" mb="lg" className="no-print">

@@ -113,7 +113,7 @@ function linkedPaymentTxIds(db: DB): Set<number> {
 // ---------------------------------------------------------------------------
 // Invoices
 // ---------------------------------------------------------------------------
-function invoiceDetail(db: DB, inv: Row, today = todayIso()) {
+export function invoiceDetail(db: DB, inv: Row, today = todayIso()) {
   const lines = db.prepare('SELECT * FROM invoice_lines WHERE invoice_id = ? ORDER BY sort, id').all(inv.id) as Row[];
   const payments = db.prepare('SELECT * FROM invoice_payments WHERE invoice_id = ? ORDER BY date, id').all(inv.id) as Row[];
   const apiLines: (InvoiceLine & { id: number })[] = lines.map((l) => ({

@@ -130,6 +130,12 @@ try {
   await page.getByText('Expenses on this trip').waitFor();
   await shot('10-trip-report');
   check(true, 'expenses added to the trip');
+  await page.getByRole('button', { name: 'Edit' }).click();
+  await page.getByLabel('Agreed fee').fill('2000');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByText(/Profitable · \$1,380\.25 \(est\.\)/).first().waitFor();
+  await shot('10b-trip-profit');
+  check(true, 'trip profit uses the agreed fee as an estimate ($2,000 − $619.75)');
 
   // Income: client → invoice → contractor.
   await page.getByRole('link', { name: 'Clients' }).click();

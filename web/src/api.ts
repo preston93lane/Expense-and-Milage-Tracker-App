@@ -243,8 +243,27 @@ export interface TripTotals {
   deductibleCents: number;
 }
 
+export interface TripProfitInfo {
+  receivedCents: number;
+  invoicedOpenCents: number;
+  agreedFeeCents: number | null;
+  invoices: { id: number; number: string | null; totalCents: number; balanceCents: number; state: string }[];
+  days: number;
+  incomeCents: number;
+  incomeIsEstimate: boolean;
+  incomeSource: 'received' | 'received+invoiced' | 'invoiced' | 'agreed_fee' | 'none';
+  costCents: number;
+  profitCents: number;
+  marginPct: number | null;
+  costPerDayCents: number;
+  profitPerDayCents: number;
+  verdict: 'profitable' | 'break_even' | 'lost_money' | 'no_income';
+}
+
 export interface TripListItem extends Trip {
+  clientName: string | null;
   totals: TripTotals;
+  profit: TripProfitInfo;
   suggestedCount: number;
 }
 
@@ -261,7 +280,10 @@ export interface TripDetail {
   homeState: string | null;
   candidates: TripCandidate[];
   assigned: Transaction[];
+  income: Transaction[];
+  incomeCandidates: Transaction[];
   totals: TripTotals;
+  profit: TripProfitInfo;
 }
 
 export interface TripSuggestion {
