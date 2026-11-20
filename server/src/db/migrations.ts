@@ -308,6 +308,37 @@ export const MIGRATIONS: Migration[] = [
          WHERE t.is_split = 1;
     `,
   },
+  {
+    version: 5,
+    name: 'planning: account balances, subscription choices, budgets, planned items',
+    sql: `
+      ALTER TABLE accounts ADD COLUMN balance_cents INTEGER;
+      ALTER TABLE accounts ADD COLUMN balance_date TEXT;
+
+      CREATE TABLE subscription_prefs (
+        series_key TEXT PRIMARY KEY,
+        status TEXT NOT NULL CHECK (status IN ('keep','replace','cancelled','ignore')),
+        note TEXT,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE budgets (
+        id INTEGER PRIMARY KEY,
+        scope TEXT NOT NULL CHECK (scope IN ('category','business_total','personal_total')),
+        category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+        monthly_cents INTEGER NOT NULL,
+        UNIQUE (scope, category_id)
+      );
+
+      CREATE TABLE planned_items (
+        id INTEGER PRIMARY KEY,
+        date TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

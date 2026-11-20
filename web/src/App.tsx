@@ -3,6 +3,9 @@ import { useDisclosure } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import {
   IconBuildingBank,
+  IconChartLine,
+  IconRepeat,
+  IconTargetArrow,
   IconCash,
   IconCategory,
   IconFileImport,
@@ -22,7 +25,10 @@ import type { ReactNode } from 'react';
 import { NavLink as RouterLink, Route, Routes, useLocation } from 'react-router-dom';
 import { api, type Dashboard } from './api';
 import { AccountsPage } from './pages/AccountsPage';
+import { BudgetsPage } from './pages/BudgetsPage';
+import { CashFlowPage } from './pages/CashFlowPage';
 import { CategoriesPage } from './pages/CategoriesPage';
+import { SubscriptionsPage } from './pages/SubscriptionsPage';
 import { ClientDetailPage } from './pages/ClientDetailPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { ContractorsPage } from './pages/ContractorsPage';
@@ -90,6 +96,14 @@ export function App() {
       items: [
         { to: '/trips', label: 'Business trips', icon: IconPlane },
         { to: '/contractors', label: 'Contractors & 1099s', icon: IconUserDollar },
+      ],
+    },
+    {
+      label: 'Planning',
+      items: [
+        { to: '/cashflow', label: 'Cash flow', icon: IconChartLine },
+        { to: '/budgets', label: 'Budgets', icon: IconTargetArrow },
+        { to: '/subscriptions', label: 'Subscriptions', icon: IconRepeat },
       ],
     },
     {
@@ -162,6 +176,9 @@ export function App() {
           <Route path="/trips" element={<TripsPage />} />
           <Route path="/trips/:id" element={<TripDetailPage />} />
           <Route path="/contractors" element={<ContractorsPage />} />
+          <Route path="/cashflow" element={<CashFlowPage />} />
+          <Route path="/budgets" element={<BudgetsPage />} />
+          <Route path="/subscriptions" element={<SubscriptionsPage />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/accounts" element={<AccountsPage />} />

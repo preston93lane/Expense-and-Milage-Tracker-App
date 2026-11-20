@@ -9,6 +9,8 @@ export interface AccountRow {
   last4: string | null;
   csv_mapping: string | null;
   ofx_account_id: string | null;
+  balance_cents: number | null;
+  balance_date: string | null;
   archived: number;
   created_at: string;
 }
@@ -123,6 +125,8 @@ export function accountToApi(a: AccountRow) {
     last4: a.last4,
     hasSavedMapping: !!a.csv_mapping,
     ofxAccountId: a.ofx_account_id,
+    balanceCents: a.balance_cents,
+    balanceDate: a.balance_date,
     archived: !!a.archived,
     createdAt: a.created_at,
   };

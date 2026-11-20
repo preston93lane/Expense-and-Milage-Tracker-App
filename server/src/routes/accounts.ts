@@ -58,6 +58,13 @@ export function accountRoutes(app: FastifyInstance, ctx: AppContext) {
         b.forgetMapping ? 1 : 0,
         id,
       );
+    if (b.balanceCents !== undefined) {
+      const date = optStr(b.balanceDate) ?? new Date().toISOString().slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) badRequest('Balance date must be YYYY-MM-DD');
+      ctx.db
+        .prepare('UPDATE accounts SET balance_cents = ?, balance_date = ? WHERE id = ?')
+        .run(b.balanceCents === null ? null : Math.round(Number(b.balanceCents)), b.balanceCents === null ? null : date, id);
+    }
     return accountToApi(ctx.db.prepare('SELECT * FROM accounts WHERE id = ?').get(id) as AccountRow);
   });
 

@@ -27,7 +27,7 @@ const H = {
   category: /^(category|categories|tax category|expense category)$/i,
   classification: /^(business\/personal|business or personal|classification|bus\/pers|transaction type \(business\/personal\))$/i,
   notes: /^(notes?|receipt notes|memo\/notes)$/i,
-  balance: /balance/i,
+  balance: /^(balance|running bal(ance)?\.?|available balance|ledger balance|account balance)$/i,
 };
 
 function findHeader(rows: string[][]): number {
@@ -138,6 +138,7 @@ export function detectCsv(text: string, opts: DetectOptions = {}): CsvDetection 
     const checkColumn = take(H.check);
     const idColumn = take(H.id);
     const notesColumn = take(H.notes);
+    const balanceColumn = take(H.balance);
 
     if (dateColumn === undefined) throw new Error('Could not find a date column.');
     if (descriptionColumn === undefined) throw new Error('Could not find a description column.');
@@ -166,6 +167,7 @@ export function detectCsv(text: string, opts: DetectOptions = {}): CsvDetection 
       categoryColumn,
       classificationColumn,
       notesColumn,
+      balanceColumn,
     };
   } else {
     rows = all;
@@ -262,6 +264,7 @@ export function applyCsvMapping(
       categoryLabel: get(mapping.categoryColumn) || null,
       classificationLabel: get(mapping.classificationColumn) || null,
       notes: get(mapping.notesColumn) || null,
+      balanceCents: mapping.balanceColumn !== undefined ? parseAmountToCents(get(mapping.balanceColumn)) : null,
     });
   });
   return { transactions, errors };

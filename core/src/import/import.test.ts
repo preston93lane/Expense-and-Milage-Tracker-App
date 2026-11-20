@@ -22,6 +22,7 @@ describe('CSV detection and import', () => {
     expect(transactions[0]).toMatchObject({ date: '2026-10-01', amountCents: -545 });
     expect(transactions[2].amountCents).toBe(250000);
     expect(transactions[7].checkNumber).toBe('1043');
+    expect(transactions[0].balanceCents).toBe(499455);
   });
 
   it('reads debit/credit columns and prefers the transaction date (Capital One style)', () => {
@@ -83,6 +84,7 @@ describe('OFX / QFX', () => {
       description: 'DELTA AIR LINES ATLANTA GA',
     });
     expect(st.transactions[3].description).toBe('AT&T WIRELESS');
+    expect(st).toMatchObject({ balanceCents: -123456, balanceDate: '2026-10-31' });
   });
 
   it('reads XML (OFX 2.x) checking statements and prefers DTUSER', () => {

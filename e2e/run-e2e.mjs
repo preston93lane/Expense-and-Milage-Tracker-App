@@ -164,6 +164,40 @@ try {
   await shot('13-income');
   check(true, 'income, clients, invoices and contractors pages work');
 
+  // Subscriptions / cash flow / budgets, with charges dated relative to today.
+  {
+    const { writeFileSync } = await import('node:fs');
+    const day = (n) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    };
+    const lines = ['Date,Description,Amount'];
+    for (const n of [122, 92, 62, 32, 2]) {
+      lines.push(`${day(n)},CALENDLY SUBSCRIPTION,12.00`);
+      lines.push(`${day(n + 3)},ADOBE *CREATIVE CLD 408-536-6000 CA,59.99`);
+    }
+    const subsFile = join(dataDir, 'subs.csv');
+    writeFileSync(subsFile, lines.join('\n'));
+    await page.getByRole('link', { name: 'Import bank files' }).click();
+    await page.getByTestId('file-input').setInputFiles(subsFile);
+    await page.getByRole('textbox', { name: 'Which account is this?' }).click();
+    await page.getByRole('option', { name: /Capital One Venture/ }).click();
+    await page.getByRole('button', { name: /Import 10 transactions/ }).click();
+    await page.getByText('Imported subs.csv').waitFor();
+    await page.getByRole('link', { name: 'Subscriptions' }).click();
+    await page.getByText('Calendly Subscription').waitFor();
+    check(await page.getByText('Agent workflow').first().isVisible(), 'subscriptions detected with replacement ideas');
+    await shot('14-subscriptions');
+    await page.getByRole('link', { name: 'Cash flow' }).click();
+    await page.getByRole('img', { name: 'Projected cash balance by week' }).waitFor();
+    await shot('15-cashflow');
+    await page.getByRole('link', { name: 'Budgets' }).click();
+    await page.getByText('Add or change a budget').waitFor();
+    await shot('16-budgets');
+    check(true, 'cash flow and budgets pages render');
+  }
+
   for (const [link, text] of [['Dashboard', 'By category'], ['Categories', 'Meals (business, 50%)'], ['Accounts', 'Capital One Venture'], ['Settings & backups', 'IRS standard mileage rates']]) {
     await page.getByRole('link', { name: link }).click();
     await page.getByText(text).first().waitFor();

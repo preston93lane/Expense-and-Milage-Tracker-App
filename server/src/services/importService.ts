@@ -55,6 +55,19 @@ interface Parsed {
   sampleRows?: string[][];
   headerSignature?: string;
   ofx?: { accountId: string | null; accountType: string };
+  /** Latest account balance found in the file. */
+  balance?: { cents: number; date: string } | null;
+}
+
+/** The balance after the newest row of a CSV with a running-balance column. */
+function latestCsvBalance(txns: ParsedTransaction[]): { cents: number; date: string } | null {
+  const withBal = txns.filter((t) => t.balanceCents !== null && t.balanceCents !== undefined);
+  if (withBal.length === 0) return null;
+  const maxDate = withBal.reduce((m, t) => (t.date > m ? t.date : m), withBal[0].date);
+  const newestFirst = txns[0].date >= txns[txns.length - 1].date;
+  const sameDay = withBal.filter((t) => t.date === maxDate);
+  const pick = newestFirst ? sameDay[0] : sameDay[sameDay.length - 1];
+  return { cents: pick.balanceCents!, date: maxDate };
 }
 
 function headerSignature(text: string, mapping: CsvMapping): string {
@@ -76,6 +89,10 @@ function parseFile(db: DB, input: ImportInput): Parsed {
       errors: st.errors,
       warnings: [],
       ofx: { accountId: st.accountId, accountType: st.accountType },
+      balance:
+        st.balanceCents !== null
+          ? { cents: st.balanceCents, date: st.balanceDate ?? st.transactions.map((t) => t.date).sort().pop() ?? '' }
+          : null,
     };
   }
   if (kind !== 'csv') throw new Error('Unsupported file. Use a CSV, OFX, QFX or QBO export from your bank.');
@@ -125,6 +142,7 @@ function parseFile(db: DB, input: ImportInput): Parsed {
     headers,
     sampleRows: rows.slice(0, 8),
     headerSignature: headerSignature(input.content, mapping),
+    balance: transactions.length ? latestCsvBalance(transactions) : null,
   };
 }
 
@@ -367,6 +385,12 @@ export function commitImport(db: DB, paths: AppPaths, input: ImportInput) {
     if (parsed.kind === 'csv' && parsed.mapping && input.saveMapping !== false) {
       const saved: SavedMapping = { mapping: parsed.mapping, headerSignature: parsed.headerSignature ?? '' };
       db.prepare('UPDATE accounts SET csv_mapping = ? WHERE id = ?').run(JSON.stringify(saved), account.id);
+    }
+    if (parsed.balance && parsed.balance.date) {
+      const cur = db.prepare('SELECT balance_date FROM accounts WHERE id = ?').get(account.id) as { balance_date: string | null };
+      if (!cur.balance_date || parsed.balance.date >= cur.balance_date) {
+        db.prepare('UPDATE accounts SET balance_cents = ?, balance_date = ? WHERE id = ?').run(parsed.balance.cents, parsed.balance.date, account.id);
+      }
     }
     if (parsed.kind === 'ofx' && parsed.ofx?.accountId && !account.ofx_account_id) {
       db.prepare('UPDATE accounts SET ofx_account_id = ? WHERE id = ?').run(parsed.ofx.accountId, account.id);

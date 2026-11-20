@@ -53,6 +53,10 @@ export function parseOfx(text: string): OfxStatement {
     accountType = t === 'CHECKING' ? 'checking' : t === 'SAVINGS' || t === 'MONEYMRKT' ? 'savings' : t === 'CREDITLINE' ? 'credit_card' : 'other';
   }
   const curMatch = body.match(/<CURDEF>([^<\r\n]+)/i);
+  const ledger = body.match(/<LEDGERBAL>([\s\S]*?)(<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>)/i);
+  const ledgerVals = ledger ? leafValues(ledger[1]) : {};
+  const balanceCents = ledgerVals.BALAMT ? parseAmountToCents(ledgerVals.BALAMT) : null;
+  const balanceDate = ledgerVals.DTASOF ? parseDateWithFormat(ledgerVals.DTASOF, 'YYYYMMDD') : null;
 
   const transactions: ParsedTransaction[] = [];
   const errors: RowError[] = [];
@@ -92,6 +96,8 @@ export function parseOfx(text: string): OfxStatement {
     bankId: acct.BANKID ?? null,
     accountType,
     currency: curMatch ? curMatch[1].trim() : null,
+    balanceCents,
+    balanceDate,
     transactions,
     errors,
   };

@@ -15,6 +15,8 @@ export interface ParsedTransaction {
   categoryLabel?: string | null;
   classificationLabel?: string | null;
   notes?: string | null;
+  /** Running balance after this row, when the file has one. */
+  balanceCents?: number | null;
 }
 
 export interface CsvMapping {
@@ -40,6 +42,7 @@ export interface CsvMapping {
   categoryColumn?: number;
   classificationColumn?: number;
   notesColumn?: number;
+  balanceColumn?: number;
 }
 
 export interface CsvDetection {
@@ -60,6 +63,9 @@ export interface OfxStatement {
   accountType: 'checking' | 'savings' | 'credit_card' | 'other';
   bankId: string | null;
   currency: string | null;
+  /** Ledger balance reported by the bank, and its as-of date. */
+  balanceCents: number | null;
+  balanceDate: string | null;
   transactions: ParsedTransaction[];
   errors: RowError[];
 }

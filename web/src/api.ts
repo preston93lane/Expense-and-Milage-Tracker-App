@@ -434,4 +434,79 @@ export interface IncomeSummary {
   upcomingRetainers: ExpectedPayment[];
 }
 
+export interface SubscriptionSeries {
+  seriesKey: string;
+  merchantKey: string;
+  merchant: string;
+  direction: 'out' | 'in';
+  frequency: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+  amountCents: number;
+  lastAmountCents: number;
+  firstDate: string;
+  lastDate: string;
+  nextDate: string;
+  occurrences: number;
+  monthlyCents: number;
+  yearlyCents: number;
+  kind: 'subscription' | 'bill';
+  status: 'active' | 'overdue' | 'stopped';
+  priceChange: { fromCents: number; toCents: number; date: string } | null;
+  classification: 'business' | 'personal' | 'mixed' | 'undecided';
+  categoryId: number | null;
+  transactionIds: number[];
+  pref: 'keep' | 'replace' | 'cancelled' | 'ignore' | null;
+  note: string | null;
+  idea: { approach: string; effort: string; idea: string };
+}
+
+export interface SubscriptionsResponse {
+  series: SubscriptionSeries[];
+  recurringIncome: SubscriptionSeries[];
+  totals: {
+    monthlyCents: number;
+    yearlyCents: number;
+    businessYearlyCents: number;
+    personalYearlyCents: number;
+    replaceYearlyCents: number;
+    cancelledYearlyCents: number;
+    priceIncreases: number;
+  };
+}
+
+export interface CashFlowResponse {
+  today: string;
+  days: number;
+  balances: { id: number; name: string; type: AccountType; balanceCents: number | null; balanceDate: string | null; currentCents: number | null }[];
+  cashCents: number;
+  cardCents: number;
+  weeklyTypicalCents: number;
+  warnings: string[];
+  startCents: number;
+  endCents: number;
+  lowest: { date: string; balanceCents: number };
+  weeks: { weekStart: string; inCents: number; outCents: number; balanceCents: number }[];
+  events: { date: string; amountCents: number; label: string; kind: string; balanceAfterCents: number }[];
+}
+
+export interface BudgetRow {
+  id: number;
+  scope: 'category' | 'business_total' | 'personal_total';
+  categoryId: number | null;
+  name: string;
+  spentCents: number;
+  budgetCents: number;
+  pct: number;
+  projectedCents: number;
+  status: 'ok' | 'warning' | 'over';
+}
+
+export interface BudgetsResponse {
+  month: string;
+  budgets: BudgetRow[];
+  typical: { categoryId: number; name: string; avgMonthlyCents: number }[];
+  unreviewed: number;
+  businessTotalCents: number;
+  personalTotalCents: number;
+}
+
 export type { TaxLineInfo };
