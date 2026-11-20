@@ -447,6 +447,46 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX ix_assets_tx ON assets(transaction_id);
     `,
   },
+  {
+    version: 9,
+    name: 'time tracking and vehicle cost comparison',
+    sql: `
+      CREATE TABLE time_entries (
+        id INTEGER PRIMARY KEY,
+        date TEXT NOT NULL,
+        started_at TEXT,
+        ended_at TEXT,
+        minutes INTEGER NOT NULL DEFAULT 0 CHECK (minutes >= 0),
+        client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+        project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+        trip_id INTEGER REFERENCES business_trips(id) ON DELETE SET NULL,
+        activity TEXT NOT NULL DEFAULT 'client_work'
+          CHECK (activity IN ('client_work','travel','editing','admin','sales_marketing','learning','other')),
+        description TEXT,
+        billable INTEGER NOT NULL DEFAULT 1,
+        rate_cents INTEGER,
+        invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX ix_time_date ON time_entries(date);
+      CREATE INDEX ix_time_client ON time_entries(client_id);
+      ALTER TABLE clients ADD COLUMN hourly_rate_cents INTEGER;
+
+      CREATE TABLE vehicle_years (
+        year INTEGER PRIMARY KEY,
+        vehicle_name TEXT,
+        total_miles REAL NOT NULL DEFAULT 0,
+        business_miles REAL NOT NULL DEFAULT 0,
+        insurance_cents INTEGER NOT NULL DEFAULT 0,
+        registration_cents INTEGER NOT NULL DEFAULT 0,
+        loan_interest_cents INTEGER NOT NULL DEFAULT 0,
+        lease_cents INTEGER NOT NULL DEFAULT 0,
+        depreciation_cents INTEGER NOT NULL DEFAULT 0,
+        other_cents INTEGER NOT NULL DEFAULT 0,
+        first_year_method TEXT CHECK (first_year_method IN ('standard','actual'))
+      );
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Modal, Paper, Stack, Switch, Table, Text, Textarea, TextInput } from '@mantine/core';
+import { Badge, Button, Group, Modal, NumberInput, Paper, Stack, Switch, Table, Text, Textarea, TextInput } from '@mantine/core';
 import { useMutation } from '@tanstack/react-query';
 import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -16,6 +16,7 @@ export interface ClientForm {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  hourlyRateCents?: number | null;
 }
 
 export function ClientModal({ initial, onClose, onSaved }: { initial: Partial<ClientForm>; onClose: () => void; onSaved?: (id: number) => void }) {
@@ -38,6 +39,16 @@ export function ClientModal({ initial, onClose, onSaved }: { initial: Partial<Cl
         <TextInput label="Email" value={f.email ?? ''} onChange={set('email')} />
         <TextInput label="Phone" value={f.phone ?? ''} onChange={set('phone')} />
         <Textarea label="Billing address" autosize minRows={2} value={f.address ?? ''} onChange={set('address')} />
+        <NumberInput
+          label="Hourly rate"
+          description="Used to value and bill tracked time for this client (optional)"
+          prefix="$"
+          thousandSeparator
+          decimalScale={2}
+          min={0}
+          value={f.hourlyRateCents != null ? f.hourlyRateCents / 100 : ''}
+          onChange={(v) => setF({ ...f, hourlyRateCents: v === '' ? null : Math.round(Number(v) * 100) })}
+        />
         <Textarea label="Notes" autosize minRows={2} value={f.notes ?? ''} onChange={set('notes')} />
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>

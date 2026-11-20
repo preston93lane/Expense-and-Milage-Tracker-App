@@ -142,6 +142,7 @@ try {
   await page.getByRole('button', { name: 'New client' }).click();
   await page.getByLabel('Name').fill('Acme Corp');
   await page.getByLabel('Email').fill('ap@acme.example');
+  await page.getByLabel('Hourly rate').fill('150');
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('heading', { name: 'Acme Corp' }).waitFor();
   await page.getByRole('button', { name: 'New invoice' }).click();
@@ -244,6 +245,38 @@ try {
   }
   check(await page.getByText('$1,299.80').first().isVisible(), 'equipment write-off for the year (MACRS + de minimis)');
   await shot('20-equipment');
+
+  // Time tracking: timer, a manual entry, bill it; then profitability + car comparison.
+  await page.getByRole('link', { name: 'Time tracking' }).click();
+  await page.getByLabel('What are you working on?').fill('Client call');
+  await page.getByRole('textbox', { name: 'Client', exact: true }).click();
+  await page.getByRole('option', { name: 'Acme Corp' }).click();
+  await page.getByRole('button', { name: 'Start timer' }).click();
+  await page.getByText('Timer running').waitFor();
+  await page.getByRole('button', { name: 'Stop' }).click();
+  await page.getByText(/nothing logged/).waitFor();
+  await page.getByRole('button', { name: 'Add time' }).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByLabel('Hours').fill('2.5');
+  await dlg.getByLabel('What did you do?').fill('Edit highlight reel');
+  await dlg.getByRole('textbox', { name: 'Client', exact: true }).click();
+  await page.getByRole('option', { name: 'Acme Corp' }).click();
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await page.getByText(/Unbilled time · \$375\.00/).waitFor();
+  await shot('21-time');
+  check(true, 'timer + manual time entry valued at the client rate');
+  await page.getByRole('button', { name: 'Create invoice' }).click();
+  await page.getByText(/Draft invoice created from 1 time entry/).waitFor();
+  check(await page.getByText('$375.00').first().isVisible(), 'unbilled time became a $375 draft invoice');
+  await page.getByRole('link', { name: 'Profitability' }).click();
+  await page.getByRole('link', { name: 'Acme Corp' }).waitFor();
+  await page.getByLabel('Total miles this year').fill('12000');
+  await page.getByLabel('Business miles').fill('6000');
+  await page.getByLabel('Insurance').fill('1500');
+  await page.getByRole('button', { name: 'Save and compare' }).click();
+  await page.getByText(/gives \$[\d,.]+ more deduction this year/).waitFor();
+  await shot('22-profitability');
+  check(true, 'profitability by client + car method comparison');
 
   for (const [link, text] of [['Dashboard', 'By category'], ['Categories', 'Meals (business, 50%)'], ['Accounts', 'Capital One Venture'], ['Settings & backups', 'IRS standard mileage rates']]) {
     await page.getByRole('link', { name: link }).click();

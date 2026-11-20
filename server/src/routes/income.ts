@@ -177,7 +177,14 @@ function readLines(v: unknown): InvoiceLine[] {
     .filter((l) => l.description || l.unitCents);
 }
 
-function replaceLines(db: DB, invoiceId: number, lines: InvoiceLine[]) {
+function rateOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n) || n < 0) badRequest('Hourly rate must be a positive amount');
+  return n;
+}
+
+export function replaceLines(db: DB, invoiceId: number, lines: InvoiceLine[]) {
   db.prepare('DELETE FROM invoice_lines WHERE invoice_id = ?').run(invoiceId);
   const ins = db.prepare('INSERT INTO invoice_lines (invoice_id, description, quantity, unit_cents, sort) VALUES (?, ?, ?, ?, ?)');
   lines.forEach((l, i) => {
@@ -186,7 +193,7 @@ function replaceLines(db: DB, invoiceId: number, lines: InvoiceLine[]) {
   });
 }
 
-function nextInvoiceNumber(db: DB): string {
+export function nextInvoiceNumber(db: DB): string {
   const prefix = getSetting<string>(db, 'invoice_prefix', 'INV-');
   const n = getSetting<number>(db, 'invoice_next_number', 1001);
   setSetting(db, 'invoice_next_number', n + 1);
@@ -324,6 +331,7 @@ export function incomeRoutes(app: FastifyInstance, ctx: AppContext) {
         address: c.address,
         notes: c.notes,
         archived: !!c.archived,
+        hourlyRateCents: c.hourly_rate_cents ?? null,
         yearIncomeCents: mine.reduce((s, l) => s + l.amount_cents, 0),
         allTimeIncomeCents: all.reduce((s, l) => s + l.amount_cents, 0),
         lastPaymentDate: all.map((l) => l.date).sort().pop() ?? null,
@@ -339,8 +347,8 @@ export function incomeRoutes(app: FastifyInstance, ctx: AppContext) {
     if (!name) badRequest('Client name is required');
     try {
       const info = ctx.db
-        .prepare('INSERT INTO clients (name, email, phone, address, notes) VALUES (?, ?, ?, ?, ?)')
-        .run(name, optStr(b.email) ?? null, optStr(b.phone) ?? null, optStr(b.address) ?? null, optStr(b.notes) ?? null);
+        .prepare('INSERT INTO clients (name, email, phone, address, notes, hourly_rate_cents) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(name, optStr(b.email) ?? null, optStr(b.phone) ?? null, optStr(b.address) ?? null, optStr(b.notes) ?? null, rateOrNull(b.hourlyRateCents));
       return ctx.db.prepare('SELECT * FROM clients WHERE id = ?').get(info.lastInsertRowid);
     } catch (e) {
       if (String(e).includes('UNIQUE')) badRequest('A client with that name already exists');
@@ -355,7 +363,7 @@ export function incomeRoutes(app: FastifyInstance, ctx: AppContext) {
     const b = (req.body ?? {}) as Row;
     const pick = (k: string, col: string) => (b[k] !== undefined ? optStr(b[k]) ?? null : c[col]);
     ctx.db
-      .prepare('UPDATE clients SET name = ?, email = ?, phone = ?, address = ?, notes = ?, archived = ? WHERE id = ?')
+      .prepare('UPDATE clients SET name = ?, email = ?, phone = ?, address = ?, notes = ?, archived = ?, hourly_rate_cents = ? WHERE id = ?')
       .run(
         optStr(b.name) ?? c.name,
         pick('email', 'email'),
@@ -363,6 +371,7 @@ export function incomeRoutes(app: FastifyInstance, ctx: AppContext) {
         pick('address', 'address'),
         pick('notes', 'notes'),
         b.archived !== undefined ? (b.archived ? 1 : 0) : c.archived,
+        b.hourlyRateCents !== undefined ? rateOrNull(b.hourlyRateCents) : c.hourly_rate_cents,
         id,
       );
     return ctx.db.prepare('SELECT * FROM clients WHERE id = ?').get(id);
@@ -401,7 +410,7 @@ export function incomeRoutes(app: FastifyInstance, ctx: AppContext) {
       .prepare('SELECT * FROM transactions WHERE client_id = ? ORDER BY date DESC LIMIT 200')
       .all(id) as TransactionRow[];
     return {
-      client: { ...c, archived: !!c.archived },
+      client: { ...c, archived: !!c.archived, hourlyRateCents: c.hourly_rate_cents ?? null },
       year,
       incomeCents,
       expenseCents,

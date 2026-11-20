@@ -375,7 +375,7 @@ export interface Invoice {
 }
 
 export interface ClientDetail {
-  client: { id: number; name: string; email: string | null; phone: string | null; address: string | null; notes: string | null; archived: boolean };
+  client: { id: number; name: string; email: string | null; phone: string | null; address: string | null; notes: string | null; archived: boolean; hourlyRateCents: number | null };
   year: number;
   incomeCents: number;
   expenseCents: number;

@@ -11,6 +11,8 @@ import {
   IconTargetArrow,
   IconCash,
   IconCamera,
+  IconClock,
+  IconChartBar,
   IconCategory,
   IconFileImport,
   IconFileInvoice,
@@ -40,6 +42,8 @@ import { ClientsPage } from './pages/ClientsPage';
 import { ContractorsPage } from './pages/ContractorsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EquipmentPage } from './pages/EquipmentPage';
+import { ProfitabilityPage } from './pages/ProfitabilityPage';
+import { TimePage } from './pages/TimePage';
 import { ImportPage } from './pages/ImportPage';
 import { IncomePage } from './pages/IncomePage';
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
@@ -102,6 +106,8 @@ export function App() {
     {
       label: 'Business',
       items: [
+        { to: '/time', label: 'Time tracking', icon: IconClock },
+        { to: '/profitability', label: 'Profitability', icon: IconChartBar },
         { to: '/trips', label: 'Business trips', icon: IconPlane },
         { to: '/contractors', label: 'Contractors & 1099s', icon: IconUserDollar },
         { to: '/receipts', label: 'Receipts', icon: IconReceipt },
@@ -190,6 +196,8 @@ export function App() {
           <Route path="/contractors" element={<ContractorsPage />} />
           <Route path="/receipts" element={<ReceiptsPage />} />
           <Route path="/equipment" element={<EquipmentPage />} />
+          <Route path="/time" element={<TimePage />} />
+          <Route path="/profitability" element={<ProfitabilityPage />} />
           <Route path="/cashflow" element={<CashFlowPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />
           <Route path="/subscriptions" element={<SubscriptionsPage />} />
