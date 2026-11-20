@@ -14,10 +14,25 @@ A private, local-only replacement for QuickBooks Self-Employed. It covers busine
 | 1 | Bank import (CSV/OFX/QFX/QBO), transaction ledger, splits, transfers, cash entries | ✅ |
 | 2 | Auto-categorisation, rules, Needs Review with keyboard shortcuts, undo | ✅ |
 | 3 | Business trips: date range + location grouping, pre-trip bookings, late hotel bills, automatic trip suggestions | ✅ |
-| 4 | Mileage: import Google Maps Timeline (iPhone), review drives, manual entry | next |
-| 5 | Reports: Schedule C summary, P&L, mileage log, quarterly estimates, home office | planned |
+| 4 | Mileage: import Google Maps Timeline (iPhone), review and edit drives, Google route lookup, manual entry | next |
+| 5 | Reports and taxes (see below) | ✅ (mileage lines fill in once Phase 4 is done) |
 | 6 | iPhone/iPad: home Wi-Fi access + offline Quick Log | planned |
 | 7 | One-file Windows install, scheduled encrypted backups, year lock | planned |
+
+### What's in the app
+
+| Area | Pages | What it does |
+|---|---|---|
+| Money in | Income, Clients, Invoices | Income by client and month, income goal, invoices with payments matched to deposits, retainers, which 1099-NECs/1099-Ks to expect |
+| Business | Time tracking | Timer or manual entries per client/project/trip, billable rates, weekly hours, where your time goes, unbilled time → draft invoice |
+| | Profitability | What each client and project really pays per hour after direct costs, against your target rate; car: standard mileage rate vs actual costs |
+| | Business trips | Trip grouping plus profit per trip (income, costs, margin, per day) and trip-to-trip comparison |
+| | Contractors & 1099s | W-9 tracking and who needs a 1099-NEC ($600 through 2025, $2,000 from 2026), excluding card/PayPal payments |
+| | Receipts | Attach PDFs/photos/emails, read the total and date, auto-match to transactions; optional email collection (below) |
+| | Equipment | Register of gear with de minimis / Section 179 / 100% bonus / MACRS / straight-line write-offs (Schedule C line 13), business-use %, warranty and replacement reminders, printable gear list for insurance |
+| Planning | Cash flow, Budgets, Subscriptions | 90-day balance forecast (bills, retainers, tax payments), monthly budgets with pace, recurring charges with ideas for replacing them with your own tools |
+| | Taxes | Schedule C summary, quarterly estimated taxes with safe harbor, home office, year-end tax packet (Excel) |
+| | Retirement | SEP-IRA / Solo 401(k) limits from your profit, planned vs actual contributions, projection to retirement |
 
 ## Install on Windows (one time)
 
@@ -60,6 +75,8 @@ It's deliberately **not** in Documents, because Windows often syncs Documents to
 - The server listens on `127.0.0.1` only, so other devices can't reach it. Opt-in home Wi-Fi access for iPhone/iPad comes in Phase 6, with a passcode.
 - Requests with an unexpected `Host` header (DNS rebinding) or a foreign `Origin` are rejected. Writes must be JSON, so a website you visit can't silently post to the app.
 - A strict Content-Security-Policy allows the page to talk only to the local server. The automated browser test fails if the page makes any request off the computer.
+- **The one opt-in exception: email receipts.** If you turn on Receipts → "Collect from email", the app signs in to *your own* mailbox (Gmail, iCloud, Zoho, Yahoo… over IMAP with an app password) and downloads receipt emails to your PC. Nothing is sent anywhere else. Leave it off and the app never goes online.
+- Receipt emails and web pages are stored as files and opened as downloads, never displayed inside the app, so a hostile email can't run anything.
 - The repository never holds data: `.gitignore` blocks databases, statements and Timeline files, and tests use made-up files in `fixtures/` only.
 
 ## Development
@@ -76,9 +93,11 @@ npm run test:e2e       # Playwright end-to-end + privacy check (needs Playwright
 
 Layout:
 
-- `core/` contains the pure logic: parsers, merchant cleanup, rules, tax tables.
+- `core/` contains the pure logic: parsers, merchant cleanup, rules, trips, tax tables and estimates, depreciation, recurring-charge detection, receipts, time and profitability math.
 - `server/` holds the Fastify API and SQLite migrations.
 - `web/` is the React + Mantine UI.
 - `fixtures/` holds made-up sample files.
+
+Tax figures are kept in `core/src/tax/` (brackets, standard deduction, Social Security wage base, retirement limits, mileage rates, 1099 thresholds) and need a yearly update. Years without a table fall back to the latest one and say so on the page.
 
 This is bookkeeping software, not tax advice. Category-to-form-line mappings follow common Schedule C practice. Confirm anything unusual with a tax professional.
