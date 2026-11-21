@@ -1,3 +1,4 @@
+import { dailyBackup } from './services/backupService';
 import { spawn } from 'node:child_process';
 import { request } from 'node:http';
 import { platform } from 'node:os';
@@ -44,6 +45,8 @@ async function main() {
   const db = await openDatabase(paths.dbPath, paths.backupsDir);
   const ctx: AppContext = { db, paths, port };
   const app = await buildApp(ctx);
+  // A fresh copy of your data each day, kept for two weeks (Settings → Backups).
+  await dailyBackup(ctx).catch((e) => console.error('Daily backup failed:', (e as Error).message));
   await app.listen({ host: DEFAULT_HOST, port });
 
   console.log('');

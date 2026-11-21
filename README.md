@@ -53,7 +53,7 @@ Double-click **`Update Expense Tracker.bat`** (Git installs), or download the ne
 |---|---|
 | Windows | `%LOCALAPPDATA%\ExpenseTracker\` (e.g. `C:\Users\you\AppData\Local\ExpenseTracker`) |
 | Database | `data.db`, a single SQLite file |
-| Backups | `backups\` (Settings → Back up now; automatic before upgrades and restores) |
+| Backups | `backups\` (automatic once a day when the app starts, last 14 kept; also Settings → Back up now, and before upgrades and restores) |
 | Original bank files | `imports\`, a private copy of each file you imported |
 
 It's deliberately **not** in Documents, because Windows often syncs Documents to OneDrive. Copy the `backups` folder to a USB drive now and then. Turning on BitLocker or Device Encryption protects the data if the laptop is lost.

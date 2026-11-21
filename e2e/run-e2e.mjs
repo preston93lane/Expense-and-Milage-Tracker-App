@@ -19,16 +19,22 @@ const base = `http://127.0.0.1:${port}`;
 const shots = process.env.E2E_SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
 
-const server = spawn(process.execPath, ['--import', 'tsx', join(root, 'server/src/main.ts')], {
-  cwd: root,
-  env: { ...process.env, ET_DATA_DIR: dataDir, ET_PORT: String(port), ET_NO_BROWSER: '1' },
-  stdio: ['ignore', 'pipe', 'inherit'],
-});
-const ready = new Promise((resolve, reject) => {
-  server.stdout.on('data', (d) => String(d).includes('is running') && resolve());
-  server.on('exit', (c) => reject(new Error(`server exited ${c}`)));
-  setTimeout(() => reject(new Error('server start timeout')), 30000);
-});
+// Starts the app on the test data folder, like double-clicking the launcher.
+function startServer() {
+  const proc = spawn(process.execPath, ['--import', 'tsx', join(root, 'server/src/main.ts')], {
+    cwd: root,
+    env: { ...process.env, ET_DATA_DIR: dataDir, ET_PORT: String(port), ET_NO_BROWSER: '1' },
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
+  const up = new Promise((resolve, reject) => {
+    proc.stdout.on('data', (d) => String(d).includes('is running') && resolve());
+    proc.on('exit', (c) => reject(new Error(`server exited ${c}`)));
+    setTimeout(() => reject(new Error('server start timeout')), 30000);
+  });
+  up.catch(() => undefined);
+  return { proc, up };
+}
+let { proc: server, up: ready } = startServer();
 
 const external = [];
 let failed = false;
@@ -283,6 +289,41 @@ try {
     await page.getByText(text).first().waitFor();
     await shot(`07-${link.split(' ')[0].toLowerCase()}`);
   }
+  // Close the app the hard way (like closing the black console window), reopen it,
+  // and check that everything entered above is still there.
+  await new Promise((resolve) => {
+    server.removeAllListeners('exit');
+    server.once('exit', resolve);
+    server.kill('SIGKILL');
+  });
+  ({ proc: server, up: ready } = startServer());
+  await ready;
+  await page.goto(base);
+  const stillThere = [
+    ['Transactions', 'Adobe'],
+    ['Rules', 'Delta is airfare'],
+    ['Business trips', 'Columbus'],
+    ['Clients', 'Acme Corp'],
+    ['Invoices', 'Acme Corp'],
+    ['Contractors & 1099s', 'Dana Editor'],
+    ['Retirement', 'Fidelity SEP-IRA'],
+    ['Receipts', 'Matched'],
+    ['Equipment', 'Sony A7 IV'],
+    ['Time tracking', 'Edit highlight reel'],
+    ['Accounts', 'Capital One Venture'],
+  ];
+  for (const [link, text] of stillThere) {
+    await page.getByRole('link', { name: link, exact: true }).click();
+    await page.getByText(text).first().waitFor({ timeout: 10000 });
+  }
+  await page.getByRole('link', { name: 'Profitability', exact: true }).click();
+  await page.getByLabel('Total miles this year').waitFor();
+  const miles = await page.getByLabel('Total miles this year').inputValue();
+  check(miles === '12,000', `car miles kept after restart (${miles})`);
+  await page.getByRole('link', { name: 'Retirement', exact: true }).click();
+  check((await page.getByLabel('Birth year').inputValue()) === '1990', 'retirement settings kept after restart');
+  check(true, `after closing and reopening the app, all ${stillThere.length} pages still show their data`);
+
   check(errors.length === 0, `no page errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
   check(external.length === 0, `no requests left this computer${external.length ? ': ' + external.join(', ') : ''}`);
   await browser.close();
